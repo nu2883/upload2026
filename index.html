@@ -123,7 +123,7 @@
   .tfont input{width:72px;padding:6px 8px;text-align:center}
   .tfont button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:0 10px;height:34px;cursor:pointer;font:inherit;font-weight:600;color:inherit}
   .pclose{display:none}
-  @media(max-width:480px){
+  @media(max-width:580px){
     .tl{display:none}.ts{display:inline}
     .tab{padding:10px 9px;font-size:13px}
     .wrap{padding-left:12px;padding-right:12px}
@@ -196,6 +196,16 @@
   @keyframes denyut{50%{box-shadow:0 0 0 5px rgba(160,20,20,.2)}}
   .kcard.u-late .dlchip,.kcard.u-soon .dlchip{animation:denyut 1.6s ease-in-out infinite}
   .kb{padding:6px 16px 14px;border-top:1px solid rgba(16,24,40,.08)}
+  /* Akordion terbuka: kepala berwarna lebih pekat, isi (detail) berwarna netral berbeda dari akordion tertutup */
+  .kcard.open{border-color:var(--uc,#2457d6);box-shadow:0 6px 18px rgba(16,24,40,.12)}
+  .kcard.open .kh{background:#e3ebfb;background:color-mix(in srgb,var(--uc,#2457d6) 20%,#fff)}
+  .kcard.open .kn{font-weight:800}
+  .kcard.open .kb{background:#eef2f7;border-top:2px solid var(--uc,#2457d6)}
+  .acc{transition:box-shadow .2s,border-color .2s}
+  .acc.open{border-color:var(--pri,#2457d6);box-shadow:0 6px 18px rgba(16,24,40,.12)}
+  .acc.open .acc-h{background:#e3ebfb;background:color-mix(in srgb,var(--pri,#2457d6) 18%,#fff)}
+  .acc.open .acc-n{font-weight:800}
+  .acc.open .acc-b{background:#eef2f7;border-top:2px solid var(--pri,#2457d6)}
   .kb .bar>i{background:var(--uc)}
   .trow{display:flex;gap:10px;align-items:center;padding:9px 0;border-bottom:1px dashed rgba(16,24,40,.13)}
   .trow:last-of-type{border-bottom:0}
@@ -435,7 +445,7 @@
           {{ kegiatan.length ? 'Tidak ada kegiatan pada filter ini.' : (bisaKelola ? 'Belum ada kegiatan. Tekan "+ Kegiatan" untuk membuat yang pertama.' : 'Belum ada kegiatan.') }}
         </div>
 
-        <div class="kcard" :class="'u-'+k.v.kelas" :style="{'--uc': k.v.warna, '--ub': k.v.latar}" v-for="k in kegTampil" :key="k.id">
+        <div class="kcard" :class="['u-'+k.v.kelas, {open: bukaKeg===k.id}]" :style="{'--uc': k.v.warna, '--ub': k.v.latar}" v-for="k in kegTampil" :key="k.id">
           <div class="kh" @click="toggleKeg(k)">
             <button class="cbk" :class="{on: k.selesai}" v-if="!k.tugas.length" :disabled="!!k.antre" @click.stop="centangKeg(k)" :title="k.selesai ? 'Batalkan selesai' : 'Tandai kegiatan selesai'">
               <svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
@@ -542,7 +552,7 @@
           {{ priv.length + privAntre.length ? 'Tidak ada kegiatan pada filter ini.' : 'Belum ada deadline privat. Tekan "+ Kegiatan" untuk membuat yang pertama.' }}
         </div>
 
-        <div class="kcard" :class="'u-'+k.v.kelas" :style="{'--uc': k.v.warna, '--ub': k.v.latar}" v-for="k in privTampil" :key="k.id">
+        <div class="kcard" :class="['u-'+k.v.kelas, {open: bukaPriv===k.id}]" :style="{'--uc': k.v.warna, '--ub': k.v.latar}" v-for="k in privTampil" :key="k.id">
           <div class="kh" @click="togglePriv(k)">
             <button class="cbk" :class="{on: k.selesai}" v-if="!k.tugas.length" :disabled="!!k.antre" @click.stop="centangPrivKeg(k)" :title="k.selesai ? 'Batalkan selesai' : 'Tandai kegiatan selesai'">
               <svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
@@ -719,7 +729,7 @@
           {{ docs.length ? 'Tidak ada dokumen yang cocok dengan pencarian.' : (bisaKelola ? 'Belum ada dokumen. Tekan "+ Dokumen" atau isi sheet Dokumen di spreadsheet.' : 'Belum ada dokumen.') }}
         </div>
 
-        <div class="card acc" v-for="d in tampil" :key="d.id">
+        <div class="card acc" :class="{open: bukaId===d.id}" v-for="d in tampil" :key="d.id">
           <button class="acc-h" @click="toggle(d)">
             <span class="acc-n">{{ d.nama }}</span>
             <span class="badge" :class="d.files.length ? 'b-ok' : 'b-no'">{{ d.files.length ? 'Sudah diunggah' + (d.files.length > 1 ? ' (' + d.files.length + ')' : '') : 'Belum diunggah' }}</span>
