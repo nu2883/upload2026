@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daftar Admin - Portal Dokumen</title>
+<script src="https://cdn.jsdelivr.net/npm/vue@2.7.16/dist/vue.js"></script>
+<style>
+  :root{--bg:#f4f6fb;--card:#fff;--line:#dfe3ec;--text:#1d2433;--muted:#667085;--pri:#2457d6;--pri-d:#1b44a8;--pri-l:#eef3ff;--ok:#0f7b45;--ok-bg:#e4f6ec;--warn:#9a5b00;--warn-bg:#fff2d9;--err:#b42318;--err-bg:#fdeceb}
+  *{box-sizing:border-box}
+  [v-cloak]{display:none}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:radial-gradient(1100px 420px at 50% -80px,#e3eaff,transparent),var(--bg);color:var(--text);font-size:15px;line-height:1.5}
+  .wrap{max-width:720px;margin:0 auto;padding:20px 16px 48px}
+  header.hd{display:flex;gap:14px;align-items:center;margin:8px 0 20px}
+  .brand{width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#2457d6,#5b3fd6);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 8px 20px rgba(36,87,214,.25)}
+  .brand svg{width:28px;height:28px;stroke:#fff;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  h1{font-size:22px;margin:0}
+  h2{font-size:17px;margin:0}
+  .muted{color:var(--muted);font-size:13px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px;margin-bottom:16px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+  .sh{display:flex;gap:12px;align-items:flex-start;margin-bottom:6px}
+  .no{width:28px;height:28px;border-radius:50%;background:var(--pri);color:#fff;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+  .grid{display:grid;grid-template-columns:1fr;gap:0 16px}
+  @media(min-width:620px){.grid{grid-template-columns:1fr 1fr}.grid .full{grid-column:1/-1}}
+  .fld{margin-top:16px}
+  .fld>label,.lbl{display:block;font-size:13px;font-weight:600;margin-bottom:6px}
+  .fld .req{color:var(--err)}
+  input[type=text],input[type=email],input[type=password]{width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:10px;font-size:15px;background:#fff;color:var(--text);font-family:inherit;transition:border-color .15s,box-shadow .15s}
+  input::placeholder{color:#98a2b3}
+  input:focus{outline:0;border-color:var(--pri);box-shadow:0 0 0 3px #d6e2ff}
+  input:disabled{background:#f4f5f7}
+  .help{font-size:12px;color:var(--muted);margin-top:5px}
+  .msg-ok{font-size:12px;color:var(--ok);margin-top:5px;font-weight:600}
+  .msg-bad{font-size:12px;color:var(--err);margin-top:5px}
+  .pw{position:relative}
+  .pw input{padding-right:78px}
+  .pwt{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--pri);font-size:13px;font-weight:600;cursor:pointer;padding:6px 8px;border-radius:6px}
+  .pwt:hover{background:var(--pri-l)}
+  .meter{display:flex;gap:4px;margin-top:8px}
+  .meter i{flex:1;height:4px;border-radius:99px;background:#e4e7ec}
+  .meter.k1 i:nth-child(-n+1){background:#d92d20}
+  .meter.k2 i:nth-child(-n+2){background:#f79009}
+  .meter.k3 i:nth-child(-n+3){background:#84cc16}
+  .meter.k4 i{background:#12a150}
+  .callout{background:var(--pri-l);border:1px solid #d3e0ff;border-radius:12px;padding:14px 16px;margin-top:16px;font-size:14px}
+  .callout b.t{display:block;margin-bottom:6px;color:#27458f}
+  .callout ol{margin:8px 0 0;padding-left:20px}
+  .callout li{margin-bottom:4px}
+  .engine{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:#fff;border:1px dashed #9db8f5;border-radius:10px;padding:9px 12px;margin-top:8px}
+  .idtag{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;word-break:break-all;flex:1;min-width:0}
+  .btn{display:inline-block;border:1px solid var(--pri);background:var(--pri);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;text-align:center}
+  .btn:hover{background:var(--pri-d)}
+  .btn.block{display:block;width:100%;padding:13px;font-size:15px}
+  .btn.ghost{background:#fff;color:var(--pri)}
+  .btn.ghost:hover{background:var(--pri-l)}
+  .btn.sm{padding:6px 12px;font-size:13px}
+  .btn[disabled]{opacity:.5;cursor:not-allowed}
+  .opts{display:grid;grid-template-columns:1fr;gap:10px;margin-top:14px}
+  @media(min-width:620px){.opts{grid-template-columns:1fr 1fr}}
+  .opt{display:flex;gap:10px;align-items:flex-start;border:1.5px solid var(--line);border-radius:12px;padding:13px 14px;cursor:pointer;background:#fff;transition:border-color .15s,background .15s}
+  .opt:hover{border-color:#b9c9f5}
+  .opt.on{border-color:var(--pri);background:var(--pri-l)}
+  .opt input{margin-top:3px;accent-color:var(--pri)}
+  .opt b{display:block;font-size:14px}
+  .opt span{font-size:12.5px;color:var(--muted)}
+  .check{display:flex;gap:10px;align-items:flex-start;margin-top:14px;font-size:14px;cursor:pointer}
+  .check input{margin-top:3px;width:16px;height:16px;accent-color:var(--pri)}
+  .err{background:var(--err-bg);color:var(--err);padding:11px 13px;border-radius:10px;font-size:13px;margin-top:14px}
+  .warn{background:var(--warn-bg);color:var(--warn);padding:11px 13px;border-radius:10px;font-size:13px;margin-bottom:14px}
+  .kurang{background:#f8f9fb;border:1px solid var(--line);border-radius:10px;padding:10px 13px;font-size:13px;color:var(--muted);margin-top:16px}
+  .kurang b{color:var(--text)}
+  .linkbtn{background:none;border:0;color:var(--pri);cursor:pointer;font-size:13px;font-weight:600;padding:0}
+  .done{text-align:center}
+  .done .ck{width:56px;height:56px;border-radius:50%;background:var(--ok-bg);display:flex;align-items:center;justify-content:center;margin:2px auto 10px}
+  .done .ck svg{width:30px;height:30px;stroke:var(--ok);fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+  .bigid{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:38px;font-weight:700;letter-spacing:6px;text-align:center;background:var(--pri-l);color:var(--pri-d);border-radius:14px;padding:16px;margin:14px 0 10px}
+  .hint{background:var(--pri-l);color:#27458f;padding:11px 13px;border-radius:10px;font-size:13px;margin-top:14px;text-align:left}
+  .steps{margin:10px 0 0;padding-left:20px;font-size:14px;text-align:left}
+  .steps li{margin-bottom:6px}
+  .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--text);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:20}
+</style>
+</head>
+<body>
+<div id="app" v-cloak>
+  <div class="wrap">
+
+    <header class="hd">
+      <div class="brand"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg></div>
+      <div>
+        <h1>Daftar sebagai Admin</h1>
+        <div class="muted">Portal Dokumen &middot; gratis. Data dan file tetap tersimpan di Google milik Anda.</div>
+      </div>
+    </header>
+
+    <div class="warn" v-if="!apiSiap">
+      URL Master belum diisi. Buka file ini, lalu isi konstanta <b>MASTER_URL</b> dengan URL web app Apps Script (berakhiran /exec).
+    </div>
+
+    <!-- ===== FORM ===== -->
+    <div v-if="!hasilId">
+
+      <div class="card">
+        <div class="sh"><span class="no">1</span><div><h2>Akun admin</h2><div class="muted">Data organisasi dan akun untuk masuk sebagai admin.</div></div></div>
+        <div class="grid">
+          <div class="fld full">
+            <label for="f-org">Nama organisasi / kantor <span class="req">*</span></label>
+            <input id="f-org" type="text" v-model.trim="f.orgNama" maxlength="100" placeholder="contoh: Bagian Keuangan Kantor X" :disabled="busy">
+          </div>
+          <div class="fld">
+            <label for="f-nama">Nama admin <span class="req">*</span></label>
+            <input id="f-nama" type="text" v-model.trim="f.adminNama" maxlength="80" placeholder="Nama lengkap" autocomplete="name" :disabled="busy">
+          </div>
+          <div class="fld">
+            <label for="f-email">Email admin <span class="req">*</span></label>
+            <input id="f-email" type="email" v-model.trim="f.email" maxlength="120" placeholder="nama@email.com" autocapitalize="none" autocomplete="email" :disabled="busy">
+            <div class="msg-bad" v-if="f.email && !emailOk">Format email belum benar.</div>
+            <div class="help" v-else>Untuk mengirim ulang ID_APP bila lupa. Gunakan email yang aktif.</div>
+          </div>
+          <div class="fld full">
+            <label for="f-user">Username / Email <span class="req">*</span></label>
+            <input id="f-user" type="text" v-model.trim="f.username" maxlength="80" placeholder="contoh: admin.keuangan atau nama@email.com" autocapitalize="none" autocomplete="username" :disabled="busy">
+            <div class="msg-bad" v-if="f.username && !userOk">Isi username (3-30 karakter: huruf, angka, titik, strip, garis bawah) atau alamat email.</div>
+            <div class="help" v-else>Huruf kecil, tanpa spasi. Dipakai untuk login.</div>
+          </div>
+          <div class="fld">
+            <label for="f-pw">Password <span class="req">*</span></label>
+            <div class="pw">
+              <input id="f-pw" :type="lihatPw ? 'text' : 'password'" v-model="f.password" placeholder="minimal 6 karakter" autocomplete="new-password" :disabled="busy">
+              <button type="button" class="pwt" @click="lihatPw=!lihatPw">{{ lihatPw ? 'Sembunyikan' : 'Lihat' }}</button>
+            </div>
+            <div class="meter" :class="'k'+kekuatan.n" v-if="f.password"><i></i><i></i><i></i><i></i></div>
+            <div class="help" v-if="f.password">Kekuatan: <b>{{ kekuatan.t }}</b></div>
+          </div>
+          <div class="fld">
+            <label for="f-pw2">Ulangi password <span class="req">*</span></label>
+            <input id="f-pw2" :type="lihatPw ? 'text' : 'password'" v-model="f.password2" autocomplete="new-password" :disabled="busy">
+            <div class="msg-ok" v-if="f.password2 && f.password === f.password2">&#10003; Password cocok</div>
+            <div class="msg-bad" v-else-if="f.password2">Password belum sama.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="sh"><span class="no">2</span><div><h2>Hubungkan Google Spreadsheet dan Drive</h2><div class="muted">Spreadsheet menyimpan daftar dokumen dan kegiatan. Folder Drive menampung file yang diunggah.</div></div></div>
+
+        <div class="callout">
+          <b class="t">Bagikan dulu sebagai Editor ke akun engine</b>
+          <div class="engine">
+            <span class="idtag">{{ engine || 'memuat alamat akun engine...' }}</span>
+            <button class="btn ghost sm" v-if="engine" @click="salin(engine)">Salin</button>
+          </div>
+          <ol>
+            <li>Buka spreadsheet &rarr; tekan <b>Bagikan</b> &rarr; tambahkan alamat di atas sebagai <b>Editor</b>.</li>
+            <li>Lakukan hal yang sama untuk folder Google Drive.</li>
+          </ol>
+          <div class="help" style="margin-top:8px">Gunakan spreadsheet kosong atau yang hanya berisi daftar dokumen. Sheet yang dibutuhkan ditambahkan otomatis.</div>
+        </div>
+
+        <div class="fld">
+          <label for="f-sheet">Link Google Spreadsheet <span class="req">*</span></label>
+          <input id="f-sheet" type="text" v-model.trim="f.sheetUrl" placeholder="https://docs.google.com/spreadsheets/d/.../edit" :disabled="busy">
+          <div class="msg-ok" v-if="sheetId">&#10003; Spreadsheet terdeteksi</div>
+          <div class="msg-bad" v-else-if="f.sheetUrl">Link belum dikenali. Salin dari address bar saat spreadsheet terbuka.</div>
+        </div>
+        <div class="fld">
+          <label for="f-folder">Link folder Google Drive <span class="req">*</span></label>
+          <input id="f-folder" type="text" v-model.trim="f.folderUrl" placeholder="https://drive.google.com/drive/folders/..." :disabled="busy">
+          <div class="msg-ok" v-if="folderId">&#10003; Folder terdeteksi</div>
+          <div class="msg-bad" v-else-if="f.folderUrl">Link belum dikenali. Harus berbentuk .../drive/folders/ID.</div>
+        </div>
+        <label class="check">
+          <input type="checkbox" v-model="f.sudahBagi" :disabled="busy">
+          <span>Saya sudah membagikan spreadsheet dan folder tersebut sebagai Editor ke akun engine.</span>
+        </label>
+      </div>
+
+      <div class="card">
+        <div class="sh"><span class="no">3</span><div><h2>Akses anggota</h2><div class="muted">Bisa diubah kapan saja di menu Pengaturan.</div></div></div>
+        <div class="opts">
+          <label class="opt" :class="{on: !f.requireLogin}">
+            <input type="radio" name="akses" :value="false" v-model="f.requireLogin" :disabled="busy">
+            <div><b>Terbuka dengan ID_APP</b><span>Anggota cukup memasukkan ID_APP, tanpa akun.</span></div>
+          </label>
+          <label class="opt" :class="{on: f.requireLogin}">
+            <input type="radio" name="akses" :value="true" v-model="f.requireLogin" :disabled="busy">
+            <div><b>Wajib login</b><span>Anggota perlu username dan password yang Anda buat.</span></div>
+          </label>
+        </div>
+      </div>
+
+      <!-- honeypot anti-bot: jangan diisi -->
+      <div class="hp" aria-hidden="true"><input type="text" tabindex="-1" autocomplete="off" v-model="f.website"></div>
+
+      <div class="kurang" v-if="kurang.length"><b>Lengkapi dulu:</b> {{ kurang.join(', ') }}.</div>
+      <div class="err" v-if="error">{{ error }}</div>
+      <button class="btn block" style="margin-top:16px" :disabled="!bisaKirim" @click="daftar">{{ busy ? 'Memverifikasi akses Google... (bisa 10-20 detik)' : 'Daftar dan buat ID_APP' }}</button>
+    </div>
+
+    <!-- ===== BERHASIL ===== -->
+    <div class="card done" v-else>
+      <div class="ck"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+      <h2>Pendaftaran berhasil</h2>
+      <div class="muted" style="margin-top:4px">Bagikan ID_APP ini kepada anggota Anda:</div>
+      <div class="bigid">{{ hasilId }}</div>
+      <button class="btn ghost sm" @click="salin(hasilId)">Salin ID_APP</button>
+
+      <div class="hint">
+        Terhubung ke spreadsheet <b>{{ hasilSheet }}</b> dan folder <b>{{ hasilFolder }}</b>.
+        Sheet <b>Dokumen</b>, <b>Berkas</b>, <b>Kegiatan</b>, <b>Task</b>, <b>User</b>, dan <b>Pengaturan</b> sudah disiapkan.
+      </div>
+
+      <h2 style="margin-top:20px;text-align:left;font-size:15px">Langkah berikutnya</h2>
+      <ol class="steps">
+        <li>Isi daftar dokumen wajib di sheet <b>Dokumen</b> (atau lewat aplikasi setelah login admin).</li>
+        <li>Bagikan ID_APP <b>{{ hasilId }}</b> kepada anggota.</li>
+        <li>Simpan username/email login admin Anda: <b>{{ hasilUser }}</b>. Bila ID_APP terlupa, kirim ulang lewat tautan "Lupa ID_APP?" di portal (dikirim ke email admin).</li>
+      </ol>
+      <a v-if="portalUrl" class="btn block" style="margin-top:18px" :href="portalUrl" target="_blank" rel="noopener">Buka Portal Dokumen</a>
+      <button class="btn ghost block" style="margin-top:10px" @click="ulang">Daftarkan admin lain</button>
+    </div>
+
+  </div>
+  <div class="toast" v-if="toast">{{ toast }}</div>
+</div>
+
+<script>
+/* ============================================================
+   KONFIGURASI
+   MASTER_URL : URL web app Apps Script "Master Upload" (berakhiran /exec)
+   PORTAL_URL : (opsional) alamat halaman Portal Dokumen, untuk tombol "Buka Portal"
+   ============================================================ */
+var MASTER_URL = 'https://script.google.com/macros/s/AKfycbyaxbTZzDOiwJt5DvQg_p6kBw-HFk1VmrxZonfnWMpH3YATcA0a49lnLm-ujbFE_8U0/exec';
+var PORTAL_URL = '';
+var ENGINE_EMAIL = 'starkit1225@gmail.com';   // cadangan; diganti otomatis oleh alamat dari server bila tersedia
+
+function parseSheetId(u) { var m = /\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/.exec(u || ''); return m ? m[1] : ''; }
+function parseFolderId(u) { var m = /\/folders\/([a-zA-Z0-9_-]+)/.exec(u || '') || /[?&]id=([a-zA-Z0-9_-]+)/.exec(u || ''); return m ? m[1] : ''; }
+
+/* Memanggil Apps Script. Body dikirim sebagai teks biasa (tanpa header khusus)
+   agar browser tidak melakukan preflight CORS. */
+function panggil(payload, ms) {
+  var ctrl = new AbortController();
+  var timer = setTimeout(function () { ctrl.abort(); }, ms || 60000);
+  return fetch(MASTER_URL, { method: 'POST', body: JSON.stringify(payload), signal: ctrl.signal })
+    .then(function (r) { return r.json(); })
+    .then(function (res) { clearTimeout(timer); return res; }, function (e) { clearTimeout(timer); throw e; });
+}
+
+new Vue({
+  el: '#app',
+  data: function () {
+    return {
+      f: { orgNama: '', adminNama: '', email: '', username: '', password: '', password2: '', sheetUrl: '', folderUrl: '', requireLogin: false, sudahBagi: false, website: '' },
+      busy: false, lihatPw: false, error: '', engine: ENGINE_EMAIL, toast: '', toastTimer: null,
+      hasilId: '', hasilSheet: '', hasilFolder: '', hasilUser: '', portalUrl: ''
+    };
+  },
+  computed: {
+    apiSiap: function () { return MASTER_URL.indexOf('GANTI_') !== 0 && /^https:\/\//.test(MASTER_URL); },
+    sheetId: function () { return parseSheetId(this.f.sheetUrl); },
+    folderId: function () { return parseFolderId(this.f.folderUrl); },
+    emailOk: function () { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(this.f.email); },
+    userOk: function () { return /^([a-z0-9._-]{3,30}|[a-z0-9._%+-]{1,64}@[a-z0-9.-]{1,63}\.[a-z]{2,})$/.test(this.f.username.toLowerCase()); },
+    kekuatan: function () {
+      var p = this.f.password, n = 0;
+      if (p.length >= 6) n++;
+      if (p.length >= 10) n++;
+      if (/[a-z]/.test(p) && /[A-Z]/.test(p) || /\d/.test(p) && /[a-zA-Z]/.test(p)) n++;
+      if (/[^a-zA-Z0-9]/.test(p) && p.length >= 8) n++;
+      n = p.length < 6 ? 1 : Math.max(2, n);
+      n = Math.min(n, 4);
+      return { n: n, t: ['', 'Terlalu pendek', 'Cukup', 'Baik', 'Kuat'][p.length < 6 ? 1 : n] };
+    },
+    kurang: function () {
+      var f = this.f, k = [];
+      if (!f.orgNama) k.push('nama organisasi');
+      if (!f.adminNama) k.push('nama admin');
+      if (!this.emailOk) k.push('email valid');
+      if (!this.userOk) k.push('username');
+      if (f.password.length < 6) k.push('password (min. 6 karakter)');
+      else if (f.password !== f.password2) k.push('ulangi password');
+      if (!this.sheetId) k.push('link spreadsheet');
+      if (!this.folderId) k.push('link folder Drive');
+      if (!f.sudahBagi) k.push('centang pernyataan berbagi akses');
+      return k;
+    },
+    bisaKirim: function () { return this.apiSiap && !this.busy && !this.kurang.length; }
+  },
+  mounted: function () {
+    var self = this;
+    if (!this.apiSiap) return;
+    panggil({ action: 'info' }, 20000).then(function (res) { if (res.ok) self.engine = res.engine; }).catch(function () {});
+  },
+  methods: {
+    daftar: function () {
+      var f = this.f, self = this;
+      this.error = '';
+      if (!f.orgNama || !f.adminNama) { this.error = 'Nama organisasi dan nama admin wajib diisi.'; return; }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(f.email)) { this.error = 'Email admin wajib diisi dengan alamat yang valid.'; return; }
+      if (!/^([a-z0-9._-]{3,30}|[a-z0-9._%+-]{1,64}@[a-z0-9.-]{1,63}\.[a-z]{2,})$/.test(f.username.toLowerCase())) { this.error = 'Isi username (3-30 karakter) atau alamat email.'; return; }
+      if (f.password.length < 6) { this.error = 'Password minimal 6 karakter.'; return; }
+      if (f.password !== f.password2) { this.error = 'Ulangi password tidak sama.'; return; }
+      if (!this.sheetId) { this.error = 'Link Google Spreadsheet belum valid.'; return; }
+      if (!this.folderId) { this.error = 'Link folder Google Drive belum valid.'; return; }
+      if (!f.sudahBagi) { this.error = 'Centang pernyataan bahwa spreadsheet dan folder sudah dibagikan ke akun engine.'; return; }
+
+      this.busy = true;
+      var user = f.username.toLowerCase();
+      panggil({
+        action: 'daftar', orgNama: f.orgNama, adminNama: f.adminNama, email: f.email.toLowerCase(), username: user, password: f.password,
+        sheetUrl: f.sheetUrl, folderUrl: f.folderUrl, requireLogin: f.requireLogin, website: f.website
+      }).then(function (res) {
+        if (!res.ok) { self.error = res.error || 'Pendaftaran gagal.'; return; }
+        self.hasilId = res.id; self.hasilSheet = res.spreadsheetNama; self.hasilFolder = res.folderNama; self.hasilUser = user;
+        self.portalUrl = PORTAL_URL ? PORTAL_URL + (PORTAL_URL.indexOf('?') === -1 ? '?' : '&') + 'id=' + encodeURIComponent(res.id) : '';
+        self.f.password = ''; self.f.password2 = '';
+      }).catch(function (e) {
+        self.error = e && e.name === 'AbortError'
+          ? 'Server terlalu lama merespons. Periksa sheet "Admin" di masterUpload2026 sebelum mencoba lagi, agar tidak terdaftar dua kali.'
+          : 'Tidak dapat terhubung ke server. Periksa koneksi, lalu coba lagi.';
+      }).then(function () { self.busy = false; });
+    },
+    ulang: function () {
+      this.hasilId = ''; this.error = '';
+      this.f = { orgNama: '', adminNama: '', email: '', username: '', password: '', password2: '', sheetUrl: '', folderUrl: '', requireLogin: false, sudahBagi: false, website: '' };
+    },
+    salin: function (t) {
+      var self = this;
+      try { navigator.clipboard.writeText(t).then(function () { self.tampil('Disalin: ' + t); }, function () { self.tampil('Salin manual: ' + t); }); }
+      catch (e) { this.tampil('Salin manual: ' + t); }
+    },
+    tampil: function (t) {
+      var self = this; this.toast = t; clearTimeout(this.toastTimer);
+      this.toastTimer = setTimeout(function () { self.toast = ''; }, 2500);
+    }
+  }
+});
+</script>
+</body>
+</html>
