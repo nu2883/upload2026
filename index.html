@@ -123,7 +123,7 @@
   .tfont input{width:72px;padding:6px 8px;text-align:center}
   .tfont button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:0 10px;height:34px;cursor:pointer;font:inherit;font-weight:600;color:inherit}
   .pclose{display:none}
-  @media(max-width:580px){
+  @media(max-width:480px){
     .tl{display:none}.ts{display:inline}
     .tab{padding:10px 9px;font-size:13px}
     .wrap{padding-left:12px;padding-right:12px}
@@ -331,7 +331,7 @@
     <div class="card gate g2">
       <div class="brand"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></div>
       <h1 class="gt">{{ tenant.nama }}</h1>
-      <p class="gs" v-if="adminLogin">Login admin untuk ID_APP <span class="idtag">{{ tenant.id }}</span></p>
+      <p class="gs" v-if="adminLogin">Login untuk ID_APP <span class="idtag">{{ tenant.id }}</span></p>
       <p class="gs" v-else>Masuk dengan akun Anda untuk ID_APP <span class="idtag">{{ tenant.id }}</span></p>
       <label for="lg-user">Username / Email</label>
       <input id="lg-user" type="text" v-model.trim="username" placeholder="Username atau email" autocomplete="username" autocapitalize="none" @keyup.enter="$refs.pw.focus()">
@@ -358,7 +358,7 @@
       </div>
       <div class="right">
         <button class="btn ghost sm" v-if="tampilGanti" @click="gantiId">Ganti ID</button>
-        <button class="btn ghost sm" v-if="tampilLoginAdmin" @click="bukaLoginAdmin">Login admin</button>
+        <button class="btn ghost sm" v-if="tampilLoginAdmin" @click="bukaLoginAdmin">Login</button>
         <div class="pmenu">
           <button class="pbtn" v-if="user" @click.stop="menuOpen=!menuOpen" :aria-expanded="menuOpen ? 'true' : 'false'" title="Akun">
             <span class="pav">{{ (user.nama || user.username || '?').charAt(0).toUpperCase() }}</span>
@@ -375,6 +375,7 @@
               <span class="prole"><span class="badge b-adm" v-if="isAdmin">Admin</span><span class="badge" v-else>Anggota</span></span>
               <span class="muted pid">ID_APP <span class="idtag">{{ tenant.id }}</span></span>
             </div>
+            <button class="pitem" v-if="user" @click="bukaGantiPw(false, '')">&#128273; Ganti password</button>
             <template v-if="user && isAdmin">
               <button class="pitem" @click="bukaTab('pengguna'); menuOpen=false">&#128101; Pengguna</button>
               <button class="pitem" @click="bukaTab('pengaturan'); menuOpen=false">&#9881; Pengaturan</button>
@@ -776,12 +777,13 @@
             <div class="two">
               <div><label style="margin-top:0">Nama</label><input type="text" v-model.trim="userForm.nama"></div>
               <div><label style="margin-top:0">Username / Email</label><input type="text" v-model.trim="userForm.username" autocapitalize="none" placeholder="username atau nama@email.com"></div>
-              <div><label>Password</label><input type="password" v-model="userForm.password" autocomplete="new-password"></div>
+              <div><label>Password awal</label><input type="password" v-model="userForm.password" autocomplete="new-password" placeholder="min. 6 karakter"></div>
               <div><label>Peran</label>
                 <select v-model="userForm.role"><option value="anggota">Anggota</option><option value="admin">Admin</option></select></div>
             </div>
             <div class="err" v-if="userForm.error">{{ userForm.error }}</div>
             <div style="margin-top:14px"><button class="btn" @click="tambahUser">Tambah pengguna</button></div>
+            <div class="muted" style="margin-top:8px">Password awal hanya untuk login pertama: pengguna wajib menggantinya sendiri, sehingga admin tidak mengetahui password mereka. Bila pengguna lupa password, tekan <b>Reset password</b> (atau ketik password sementara di kolom "Password Sementara" pada sheet User); pengguna akan diminta menggantinya lagi saat login.</div>
             <div class="muted" style="margin-top:8px">Pengguna dipakai bila tampilan utama diatur wajib login. Admin tambahan tidak dapat menghapus atau menurunkan admin utama.</div>
           </div>
           <div class="card pad">
@@ -793,10 +795,14 @@
                 <span class="badge b-adm" v-if="u.role==='admin'">{{ u.utama ? 'Admin utama' : 'Admin' }}</span>
                 <span class="badge b-cat" v-else>Anggota</span>
                 <div class="muted">{{ u.username.indexOf('@') < 0 ? '@' : '' }}{{ u.username }}</div>
+                <div class="muted" v-if="u.menunggu" style="color:#9a3d00">Belum mengganti password sementara</div>
               </div>
-              <div class="acts" v-if="!u.utama">
+              <div class="acts">
+                <button class="btn ghost sm" @click="bukaResetPw(u)" v-if="!u.utama || u.username===user.username">Reset password</button>
+                <template v-if="!u.utama">
                 <button class="btn ghost sm" @click="ubahPeran(u)">{{ u.role==='admin' ? 'Jadikan anggota' : 'Jadikan admin' }}</button>
                 <button class="btn danger sm" @click="tanyaHapusUser(u)">Hapus</button>
+                </template>
               </div>
             </div>
           </div>
@@ -1015,6 +1021,41 @@
   </div>
 
   <!-- ============ DIALOG KONFIRMASI UMUM ============ -->
+  <!-- ============ GANTI PASSWORD ============ -->
+  <div class="overlay pwov" v-if="gantiPw.open" @click.self="gantiPw.wajib ? null : gantiPw.open=false">
+    <div class="card modal">
+      <h2>{{ gantiPw.wajib ? 'Buat password baru' : 'Ganti password' }}</h2>
+      <p class="muted" v-if="gantiPw.wajib" style="margin:4px 0 0">Demi keamanan, password dari admin hanya untuk login pertama. Buat password Anda sendiri; admin tidak akan mengetahuinya.</p>
+      <label>{{ gantiPw.wajib ? 'Password saat ini (dari admin)' : 'Password lama' }}</label>
+      <input :type="gantiPw.lihat ? 'text' : 'password'" v-model="gantiPw.lama" autocomplete="current-password">
+      <label>Password baru <span class="opt">(min. 6 karakter)</span></label>
+      <input :type="gantiPw.lihat ? 'text' : 'password'" v-model="gantiPw.baru" autocomplete="new-password">
+      <label>Ulangi password baru</label>
+      <input :type="gantiPw.lihat ? 'text' : 'password'" v-model="gantiPw.ulang" autocomplete="new-password" @keyup.enter="kirimGantiPw">
+      <label style="display:flex;gap:8px;align-items:center;font-weight:500;margin-top:10px"><input type="checkbox" v-model="gantiPw.lihat" style="width:auto"> Tampilkan password</label>
+      <div class="err" v-if="gantiPw.error">{{ gantiPw.error }}</div>
+      <div class="row">
+        <button class="btn ghost" @click="batalGantiPw">{{ gantiPw.wajib ? 'Keluar' : 'Batal' }}</button>
+        <button class="btn" @click="kirimGantiPw" :disabled="gantiPw.busy">{{ gantiPw.busy ? 'Menyimpan...' : 'Simpan password' }}</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ RESET PASSWORD (admin) ============ -->
+  <div class="overlay" v-if="resetPw.open" @click.self="resetPw.open=false">
+    <div class="card modal">
+      <h2>Reset password</h2>
+      <p class="muted" style="margin:4px 0 0">{{ resetPw.u && resetPw.u.nama }} ({{ resetPw.u && resetPw.u.username }}) akan login dengan password sementara ini, lalu diminta membuat password baru.</p>
+      <label>Password sementara <span class="opt">(min. 6 karakter)</span></label>
+      <input type="text" v-model="resetPw.pw" autocomplete="off" @keyup.enter="kirimResetPw">
+      <div class="err" v-if="resetPw.error">{{ resetPw.error }}</div>
+      <div class="row">
+        <button class="btn ghost" @click="resetPw.open=false">Batal</button>
+        <button class="btn" @click="kirimResetPw" :disabled="resetPw.busy">{{ resetPw.busy ? 'Menyimpan...' : 'Tetapkan' }}</button>
+      </div>
+    </div>
+  </div>
+
   <div class="overlay" v-if="konfirm.open" @click.self="konfirm.open=false">
     <div class="card modal" style="max-width:400px">
       <h2>{{ konfirm.judul }}</h2>
@@ -1155,7 +1196,7 @@ new Vue({
       registrasiUrl: REGISTRASI_URL,
       tab: 'dokumen', tabSiap: false, kegiatan: [], bukaKeg: '', kegFilter: 'semua', tugasInput: '', editT: { id: '', judul: '' }, sekarang: Date.now(),
       kegForm: { open: false, busy: false, id: null, nama: '', keterangan: '', deadline: '', tugas: '', error: '' },
-      q: '', kategori: '', status: 'semua', toast: '', toastTimer: null, bukaId: '', menuOpen: false, bgJalan: 0, fontPx: 15, priv: [], privAntre: [], bukaPriv: '', privTugasInput: '', editPT: { id: '', judul: '' }, qPriv: '', privFilter: 'semua', halPriv: 1, perPriv: ukuranTersimpan('dp_per_priv'), privForm: { open: false, busy: false, id: null, nama: '', keterangan: '', deadline: '', tugas: '', error: '' }, rekapOpen: false, links: [], qLink: '', linkView: prefTersimpan('dp_link_view', ['grid', 'list'], 'grid'), linkUrut: prefTersimpan('dp_link_urut', ['populer', 'nama', 'nama-desc', 'terbaru'], 'populer'), klikBuf: {}, klikTimer: null, halLink: 1, perLink: ukuranTersimpan('dp_per_link'), linkForm: { open: false, busy: false, id: null, judul: '', url: '', keterangan: '', error: '' }, lihatPw: false, lupa: { open: false, email: '', busy: false, error: '', pesan: '' }, kegAntre: [], hal: 1, perHal: ukuranTersimpan('dp_per_dok'), halKeg: 1, perKeg: ukuranTersimpan('dp_per_keg'), qKeg: '', antrean: [], aktifKirim: 0, segarTimer: null, antreTimer: null, peringatIdb: false,
+      q: '', kategori: '', status: 'semua', toast: '', toastTimer: null, bukaId: '', menuOpen: false, bgJalan: 0, gantiPw: { open: false, wajib: false, lama: '', baru: '', ulang: '', lihat: false, error: '', busy: false }, resetPw: { open: false, u: null, pw: '', error: '', busy: false }, fontPx: 15, priv: [], privAntre: [], bukaPriv: '', privTugasInput: '', editPT: { id: '', judul: '' }, qPriv: '', privFilter: 'semua', halPriv: 1, perPriv: ukuranTersimpan('dp_per_priv'), privForm: { open: false, busy: false, id: null, nama: '', keterangan: '', deadline: '', tugas: '', error: '' }, rekapOpen: false, links: [], qLink: '', linkView: prefTersimpan('dp_link_view', ['grid', 'list'], 'grid'), linkUrut: prefTersimpan('dp_link_urut', ['populer', 'nama', 'nama-desc', 'terbaru'], 'populer'), klikBuf: {}, klikTimer: null, halLink: 1, perLink: ukuranTersimpan('dp_per_link'), linkForm: { open: false, busy: false, id: null, judul: '', url: '', keterangan: '', error: '' }, lihatPw: false, lupa: { open: false, email: '', busy: false, error: '', pesan: '' }, kegAntre: [], hal: 1, perHal: ukuranTersimpan('dp_per_dok'), halKeg: 1, perKeg: ukuranTersimpan('dp_per_keg'), qKeg: '', antrean: [], aktifKirim: 0, segarTimer: null, antreTimer: null, peringatIdb: false,
       pv: { open: false, loading: false, error: '', url: '', jenis: '', nama: '', file: '' },
       up: { open: false, doc: null, nama: '', items: [], busy: false, progress: 0, ke: 0, error: '' },
       docForm: { open: false, id: null, nama: '', kategori: '', keterangan: '', wajib: true, error: '' },
@@ -1397,6 +1438,7 @@ new Vue({
         .then(function (res) {
           if (res && res.token) { self.token = res.token; self.simpanSesi(); }
           if (res && res.ok === false && res.kode === 'LOGIN') self.sesiHabis(res.error);
+          if (res && res.ok === false && res.kode === 'GANTI_PW') self.bukaGantiPw(true, '');
           if (!opsi.senyap) self.sibuk--; else if (!opsi.tanpaPil) self.bgJalan--; return res;
         }, function (e) { if (!opsi.senyap) self.sibuk--; else if (!opsi.tanpaPil) self.bgJalan--; throw e; });
     },
@@ -1459,11 +1501,50 @@ new Vue({
       this.engine({ action: 'login', username: this.username, password: this.password }, { retry: true }).then(function (res) {
         self.loading = false;
         if (!res.ok) { self.error = res.error; self.password = ''; return; }
-        if (self.adminLogin && res.user.role !== 'admin') { self.error = 'Akun ini bukan admin.'; self.password = ''; self.token = ''; return; }
         self.user = res.user; self.simpanSesi();
-        self.username = ''; self.password = ''; self.adminLogin = false; self.tab = 'kegiatan';
+        var pwAwal = self.password;
+        self.username = ''; self.password = ''; self.tab = 'kegiatan';
+        if (res.wajibGanti) { self.bukaGantiPw(true, pwAwal); return; }       // login pertama / setelah reset: wajib ganti password dulu
+        self.adminLogin = false;
         self.muatDokumen();
       }).catch(function (e) { self.loading = false; self.error = self.pesanGalat(e); });
+    },
+    bukaGantiPw: function (wajib, lama) {
+      this.menuOpen = false;
+      this.gantiPw = { open: true, wajib: !!wajib, lama: lama || '', baru: '', ulang: '', lihat: false, error: '', busy: false };
+    },
+    kirimGantiPw: function () {
+      var f = this.gantiPw, self = this;
+      if (!f.lama) { f.error = f.wajib ? 'Isi password yang Anda pakai untuk login.' : 'Isi password lama.'; return; }
+      if (f.baru.length < 6) { f.error = 'Password baru minimal 6 karakter.'; return; }
+      if (f.baru !== f.ulang) { f.error = 'Ulangi password baru dengan sama persis.'; return; }
+      if (f.baru === f.lama) { f.error = 'Password baru harus berbeda dari yang lama.'; return; }
+      f.error = ''; f.busy = true;
+      this.engine({ action: 'passwordUbah', lama: f.lama, baru: f.baru }).then(function (res) {
+        f.busy = false;
+        if (!res.ok) { f.error = res.error; return; }
+        var wajib = f.wajib;
+        self.gantiPw = { open: false, wajib: false, lama: '', baru: '', ulang: '', lihat: false, error: '', busy: false };
+        if (res.user) self.user = res.user;
+        self.simpanSesi();
+        self.tampilToast('Password berhasil diganti.');
+        if (wajib || self.screen !== 'main') { self.adminLogin = false; self.tab = 'kegiatan'; self.muatDokumen(); }
+      }).catch(function (e) { f.busy = false; f.error = self.pesanGalat(e); });
+    },
+    batalGantiPw: function () {
+      if (this.gantiPw.wajib) { this.gantiPw.open = false; this.keluar(); return; }     // menolak mengganti = keluar
+      this.gantiPw.open = false;
+    },
+    bukaResetPw: function (u) { this.resetPw = { open: true, u: u, pw: '', error: '', busy: false }; },
+    kirimResetPw: function () {
+      var f = this.resetPw, self = this;
+      if (f.pw.length < 6) { f.error = 'Password sementara minimal 6 karakter.'; return; }
+      f.error = ''; f.busy = true;
+      this.engine({ action: 'userResetPw', username: f.u.username, sementara: f.pw }).then(function (res) {
+        f.busy = false;
+        if (!res.ok) { f.error = res.error; return; }
+        f.open = false; self.tampilToast('Password sementara ditetapkan. Pengguna wajib menggantinya saat login.'); self.muatUsers();
+      }).catch(function (e) { f.busy = false; f.error = self.pesanGalat(e); });
     },
     bukaLoginAdmin: function () { this.adminLogin = true; this.screen = 'login'; this.error = ''; },
     batalLoginAdmin: function () { this.adminLogin = false; this.error = ''; this.muatDokumen(); },
@@ -1472,6 +1553,7 @@ new Vue({
       this.tanya('Keluar dari akun?', 'Anda perlu memasukkan username/email dan password lagi untuk masuk.' + (n ? ' Ada ' + n + ' berkas yang belum selesai diunggah; unggahannya dilanjutkan setelah Anda login lagi di perangkat ini.' : ''), 'Ya, keluar', this.keluar);
     },
     keluar: function () {
+      this.gantiPw.open = false;
       this.token = ''; this.user = null; this.priv = []; this.privAntre = []; this.simpanSesi(); this.tab = 'kegiatan'; this.users = []; this.error = '';
       if (this.tenant.requireLogin) { this.screen = 'login'; this.docs = []; } else this.muatDokumen();
     },
@@ -2165,6 +2247,7 @@ new Vue({
     tekanKey: function (e) {
       if (e.key !== 'Escape' && e.key !== 'Esc') return;
       if (this.pv.open) { this.tutupPreview(); return; }
+      if (this.gantiPw.open) { if (!this.gantiPw.wajib) this.gantiPw.open = false; return; }
       if (this.menuOpen) { this.menuOpen = false; return; }
       if (this.konfirm.open) { this.konfirm.open = false; return; }
       if (this.docForm.open) { this.docForm.open = false; return; }
