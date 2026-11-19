@@ -67,6 +67,10 @@
   .check input{margin-top:3px;width:16px;height:16px;accent-color:var(--pri)}
   .err{background:var(--err-bg);color:var(--err);padding:11px 13px;border-radius:10px;font-size:13px;margin-top:14px}
   .warn{background:var(--warn-bg);color:var(--warn);padding:11px 13px;border-radius:10px;font-size:13px;margin-bottom:14px}
+  .adv{width:100%;display:flex;justify-content:space-between;align-items:center;background:#fff;border:1px dashed var(--line);border-radius:12px;padding:13px 16px;font:inherit;font-weight:600;cursor:pointer;color:var(--text);margin-bottom:16px}
+  .adv em{font-style:normal;font-weight:400;color:var(--muted)}
+  .adv .car{transition:transform .2s}.adv.on .car{transform:rotate(180deg)}
+  .adv:hover{background:#f3f5fa}
   .kurang{background:#f8f9fb;border:1px solid var(--line);border-radius:10px;padding:10px 13px;font-size:13px;color:var(--muted);margin-top:16px}
   .kurang b{color:var(--text)}
   .linkbtn{background:none;border:0;color:var(--pri);cursor:pointer;font-size:13px;font-weight:600;padding:0}
@@ -101,27 +105,17 @@
     <div v-if="!hasilId">
 
       <div class="card">
-        <div class="sh"><span class="no">1</span><div><h2>Akun admin</h2><div class="muted">Data organisasi dan akun untuk masuk sebagai admin.</div></div></div>
+        <div class="sh"><span class="no">1</span><div><h2>Akun admin</h2><div class="muted">Cukup tiga isian. Email dipakai untuk login dan untuk mengirim ulang ID_APP.</div></div></div>
         <div class="grid">
           <div class="fld full">
-            <label for="f-org">Nama organisasi / kantor <span class="req">*</span></label>
-            <input id="f-org" type="text" v-model.trim="f.orgNama" maxlength="100" placeholder="contoh: Bagian Keuangan Kantor X" :disabled="busy">
+            <label for="f-email">Email admin <span class="req">*</span></label>
+            <input id="f-email" type="email" v-model.trim="f.email" maxlength="120" placeholder="nama@email.com" autocapitalize="none" autocomplete="email" :disabled="busy">
+            <div class="msg-bad" v-if="f.email && !emailOk">Format email belum benar.</div>
+            <div class="help" v-else>Gunakan email yang aktif. Inilah yang Anda ketik saat login.</div>
           </div>
           <div class="fld">
             <label for="f-nama">Nama admin <span class="req">*</span></label>
             <input id="f-nama" type="text" v-model.trim="f.adminNama" maxlength="80" placeholder="Nama lengkap" autocomplete="name" :disabled="busy">
-          </div>
-          <div class="fld">
-            <label for="f-email">Email admin <span class="req">*</span></label>
-            <input id="f-email" type="email" v-model.trim="f.email" maxlength="120" placeholder="nama@email.com" autocapitalize="none" autocomplete="email" :disabled="busy">
-            <div class="msg-bad" v-if="f.email && !emailOk">Format email belum benar.</div>
-            <div class="help" v-else>Untuk mengirim ulang ID_APP bila lupa. Gunakan email yang aktif.</div>
-          </div>
-          <div class="fld full">
-            <label for="f-user">Username / Email <span class="req">*</span></label>
-            <input id="f-user" type="text" v-model.trim="f.username" maxlength="80" placeholder="contoh: admin.keuangan atau nama@email.com" autocapitalize="none" autocomplete="username" :disabled="busy">
-            <div class="msg-bad" v-if="f.username && !userOk">Isi username (3-30 karakter: huruf, angka, titik, strip, garis bawah) atau alamat email.</div>
-            <div class="help" v-else>Huruf kecil, tanpa spasi. Dipakai untuk login.</div>
           </div>
           <div class="fld">
             <label for="f-pw">Password <span class="req">*</span></label>
@@ -132,29 +126,19 @@
             <div class="meter" :class="'k'+kekuatan.n" v-if="f.password"><i></i><i></i><i></i><i></i></div>
             <div class="help" v-if="f.password">Kekuatan: <b>{{ kekuatan.t }}</b></div>
           </div>
-          <div class="fld">
-            <label for="f-pw2">Ulangi password <span class="req">*</span></label>
-            <input id="f-pw2" :type="lihatPw ? 'text' : 'password'" v-model="f.password2" autocomplete="new-password" :disabled="busy">
-            <div class="msg-ok" v-if="f.password2 && f.password === f.password2">&#10003; Password cocok</div>
-            <div class="msg-bad" v-else-if="f.password2">Password belum sama.</div>
-          </div>
         </div>
       </div>
 
       <div class="card">
-        <div class="sh"><span class="no">2</span><div><h2>Hubungkan Google Spreadsheet dan Drive</h2><div class="muted">Spreadsheet menyimpan daftar dokumen dan kegiatan. Folder Drive menampung file yang diunggah.</div></div></div>
+        <div class="sh"><span class="no">2</span><div><h2>Hubungkan Google Spreadsheet</h2><div class="muted">Semua data (kegiatan, pengguna, daftar dokumen) disimpan di spreadsheet milik Anda.</div></div></div>
 
         <div class="callout">
-          <b class="t">Bagikan dulu sebagai Editor ke akun engine</b>
+          <b class="t">Bagikan spreadsheet sebagai Editor ke akun engine</b>
           <div class="engine">
             <span class="idtag">{{ engine || 'memuat alamat akun engine...' }}</span>
             <button class="btn ghost sm" v-if="engine" @click="salin(engine)">Salin</button>
           </div>
-          <ol>
-            <li>Buka spreadsheet &rarr; tekan <b>Bagikan</b> &rarr; tambahkan alamat di atas sebagai <b>Editor</b>.</li>
-            <li>Lakukan hal yang sama untuk folder Google Drive.</li>
-          </ol>
-          <div class="help" style="margin-top:8px">Gunakan spreadsheet kosong atau yang hanya berisi daftar dokumen. Sheet yang dibutuhkan ditambahkan otomatis.</div>
+          <div class="help" style="margin-top:8px">Buka spreadsheet &rarr; <b>Bagikan</b> &rarr; tempel alamat di atas &rarr; pilih <b>Editor</b>. Gunakan spreadsheet kosong; sheet yang dibutuhkan ditambahkan otomatis.</div>
         </div>
 
         <div class="fld">
@@ -163,29 +147,40 @@
           <div class="msg-ok" v-if="sheetId">&#10003; Spreadsheet terdeteksi</div>
           <div class="msg-bad" v-else-if="f.sheetUrl">Link belum dikenali. Salin dari address bar saat spreadsheet terbuka.</div>
         </div>
-        <div class="fld">
-          <label for="f-folder">Link folder Google Drive <span class="req">*</span></label>
-          <input id="f-folder" type="text" v-model.trim="f.folderUrl" placeholder="https://drive.google.com/drive/folders/..." :disabled="busy">
-          <div class="msg-ok" v-if="folderId">&#10003; Folder terdeteksi</div>
-          <div class="msg-bad" v-else-if="f.folderUrl">Link belum dikenali. Harus berbentuk .../drive/folders/ID.</div>
-        </div>
         <label class="check">
           <input type="checkbox" v-model="f.sudahBagi" :disabled="busy">
-          <span>Saya sudah membagikan spreadsheet dan folder tersebut sebagai Editor ke akun engine.</span>
+          <span>Saya sudah membagikan spreadsheet{{ f.folderUrl ? ' dan folder' : '' }} tersebut sebagai Editor ke akun engine.</span>
         </label>
       </div>
 
-      <div class="card">
-        <div class="sh"><span class="no">3</span><div><h2>Akses anggota</h2><div class="muted">Bisa diubah kapan saja di menu Pengaturan.</div></div></div>
-        <div class="opts">
-          <label class="opt" :class="{on: !f.requireLogin}">
-            <input type="radio" name="akses" :value="false" v-model="f.requireLogin" :disabled="busy">
-            <div><b>Terbuka dengan ID_APP</b><span>Anggota cukup memasukkan ID_APP, tanpa akun.</span></div>
-          </label>
-          <label class="opt" :class="{on: f.requireLogin}">
-            <input type="radio" name="akses" :value="true" v-model="f.requireLogin" :disabled="busy">
-            <div><b>Wajib login</b><span>Anggota perlu username dan password yang Anda buat.</span></div>
-          </label>
+      <button type="button" class="adv" :class="{on: lanjut}" @click="lanjut=!lanjut" :aria-expanded="lanjut ? 'true' : 'false'">
+        <span>&#9881; Pengaturan lanjutan <em>(opsional)</em></span><span class="car">&#9662;</span>
+      </button>
+      <div class="card adv-body" v-if="lanjut">
+        <div class="muted" style="margin-bottom:4px">Boleh dilewati. Semua ini bisa diisi nanti lewat menu Pengaturan setelah login sebagai admin.</div>
+        <div class="fld">
+          <label for="f-org">Nama organisasi / kantor</label>
+          <input id="f-org" type="text" v-model.trim="f.orgNama" maxlength="100" :placeholder="'Bawaan: Portal ' + (f.adminNama || 'nama admin')" :disabled="busy">
+        </div>
+        <div class="fld">
+          <label for="f-folder">Link folder Google Drive <span class="muted" style="font-weight:400">(untuk unggah dokumen)</span></label>
+          <input id="f-folder" type="text" v-model.trim="f.folderUrl" placeholder="https://drive.google.com/drive/folders/..." :disabled="busy">
+          <div class="msg-ok" v-if="folderId">&#10003; Folder terdeteksi. Bagikan juga sebagai Editor ke akun engine.</div>
+          <div class="msg-bad" v-else-if="f.folderUrl">Link belum dikenali. Harus berbentuk .../drive/folders/ID.</div>
+          <div class="help" v-else>Dikosongkan: Deadline, Link Penting, dan pengguna tetap jalan; hanya unggah dokumen yang menunggu folder dihubungkan.</div>
+        </div>
+        <div class="fld">
+          <span class="lbl">Akses anggota</span>
+          <div class="opts" style="margin-top:6px">
+            <label class="opt" :class="{on: f.requireLogin}">
+              <input type="radio" name="akses" :value="true" v-model="f.requireLogin" :disabled="busy">
+              <div><b>Wajib login (disarankan)</b><span>Anggota login dengan akun yang Anda buat.</span></div>
+            </label>
+            <label class="opt" :class="{on: !f.requireLogin}">
+              <input type="radio" name="akses" :value="false" v-model="f.requireLogin" :disabled="busy">
+              <div><b>Terbuka dengan ID_APP</b><span>Anggota cukup memasukkan ID_APP, tanpa akun.</span></div>
+            </label>
+          </div>
         </div>
       </div>
 
@@ -206,15 +201,16 @@
       <button class="btn ghost sm" @click="salin(hasilId)">Salin ID_APP</button>
 
       <div class="hint">
-        Terhubung ke spreadsheet <b>{{ hasilSheet }}</b> dan folder <b>{{ hasilFolder }}</b>.
+        Terhubung ke spreadsheet <b>{{ hasilSheet }}</b><span v-if="hasilFolder"> dan folder <b>{{ hasilFolder }}</b></span>.
         Sheet <b>Dokumen</b>, <b>Berkas</b>, <b>Kegiatan</b>, <b>Task</b>, <b>User</b>, dan <b>Pengaturan</b> sudah disiapkan.
       </div>
 
       <h2 style="margin-top:20px;text-align:left;font-size:15px">Langkah berikutnya</h2>
       <ol class="steps">
-        <li>Isi daftar dokumen wajib di sheet <b>Dokumen</b> (atau lewat aplikasi setelah login admin).</li>
-        <li>Bagikan ID_APP <b>{{ hasilId }}</b> kepada anggota.</li>
-        <li>Simpan username/email login admin Anda: <b>{{ hasilUser }}</b>. Bila ID_APP terlupa, kirim ulang lewat tautan "Lupa ID_APP?" di portal (dikirim ke email admin).</li>
+        <li>Buka portal dan login dengan email <b>{{ hasilUser }}</b> dan password yang tadi Anda buat.</li>
+        <li v-if="!hasilFolder">Hubungkan folder Google Drive lewat menu profil &rarr; <b>Pengaturan</b> agar dokumen bisa diunggah.</li>
+        <li>Tambahkan pengguna lewat menu profil &rarr; <b>Pengguna</b>. Mereka membuat password sendiri saat login pertama.</li>
+        <li>Bagikan ID_APP <b>{{ hasilId }}</b> kepada anggota. Bila terlupa, kirim ulang lewat tautan "Lupa ID_APP?" di portal (dikirim ke email admin).</li>
       </ol>
       <a v-if="portalUrl" class="btn block" style="margin-top:18px" :href="portalUrl" target="_blank" rel="noopener">Buka Portal Dokumen</a>
       <button class="btn ghost block" style="margin-top:10px" @click="ulang">Daftarkan admin lain</button>
@@ -231,7 +227,7 @@
    PORTAL_URL : (opsional) alamat halaman Portal Dokumen, untuk tombol "Buka Portal"
    ============================================================ */
 var MASTER_URL = 'https://script.google.com/macros/s/AKfycbyaxbTZzDOiwJt5DvQg_p6kBw-HFk1VmrxZonfnWMpH3YATcA0a49lnLm-ujbFE_8U0/exec';
-var PORTAL_URL = '';
+var PORTAL_URL = 'https://nu2883.github.io/upload2026/';
 var ENGINE_EMAIL = 'starkit1225@gmail.com';   // cadangan; diganti otomatis oleh alamat dari server bila tersedia
 
 function parseSheetId(u) { var m = /\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/.exec(u || ''); return m ? m[1] : ''; }
@@ -251,7 +247,7 @@ new Vue({
   el: '#app',
   data: function () {
     return {
-      f: { orgNama: '', adminNama: '', email: '', username: '', password: '', password2: '', sheetUrl: '', folderUrl: '', requireLogin: false, sudahBagi: false, website: '' },
+      f: { orgNama: '', adminNama: '', email: '', password: '', sheetUrl: '', folderUrl: '', requireLogin: true, sudahBagi: false, website: '' }, lanjut: false,
       busy: false, lihatPw: false, error: '', engine: ENGINE_EMAIL, toast: '', toastTimer: null,
       hasilId: '', hasilSheet: '', hasilFolder: '', hasilUser: '', portalUrl: ''
     };
@@ -261,7 +257,6 @@ new Vue({
     sheetId: function () { return parseSheetId(this.f.sheetUrl); },
     folderId: function () { return parseFolderId(this.f.folderUrl); },
     emailOk: function () { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(this.f.email); },
-    userOk: function () { return /^([a-z0-9._-]{3,30}|[a-z0-9._%+-]{1,64}@[a-z0-9.-]{1,63}\.[a-z]{2,})$/.test(this.f.username.toLowerCase()); },
     kekuatan: function () {
       var p = this.f.password, n = 0;
       if (p.length >= 6) n++;
@@ -274,14 +269,11 @@ new Vue({
     },
     kurang: function () {
       var f = this.f, k = [];
-      if (!f.orgNama) k.push('nama organisasi');
-      if (!f.adminNama) k.push('nama admin');
       if (!this.emailOk) k.push('email valid');
-      if (!this.userOk) k.push('username');
+      if (!f.adminNama) k.push('nama admin');
       if (f.password.length < 6) k.push('password (min. 6 karakter)');
-      else if (f.password !== f.password2) k.push('ulangi password');
       if (!this.sheetId) k.push('link spreadsheet');
-      if (!this.folderId) k.push('link folder Drive');
+      if (f.folderUrl && !this.folderId) k.push('link folder Drive yang valid (atau kosongkan)');
       if (!f.sudahBagi) k.push('centang pernyataan berbagi akses');
       return k;
     },
@@ -296,25 +288,17 @@ new Vue({
     daftar: function () {
       var f = this.f, self = this;
       this.error = '';
-      if (!f.orgNama || !f.adminNama) { this.error = 'Nama organisasi dan nama admin wajib diisi.'; return; }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(f.email)) { this.error = 'Email admin wajib diisi dengan alamat yang valid.'; return; }
-      if (!/^([a-z0-9._-]{3,30}|[a-z0-9._%+-]{1,64}@[a-z0-9.-]{1,63}\.[a-z]{2,})$/.test(f.username.toLowerCase())) { this.error = 'Isi username (3-30 karakter) atau alamat email.'; return; }
-      if (f.password.length < 6) { this.error = 'Password minimal 6 karakter.'; return; }
-      if (f.password !== f.password2) { this.error = 'Ulangi password tidak sama.'; return; }
-      if (!this.sheetId) { this.error = 'Link Google Spreadsheet belum valid.'; return; }
-      if (!this.folderId) { this.error = 'Link folder Google Drive belum valid.'; return; }
-      if (!f.sudahBagi) { this.error = 'Centang pernyataan bahwa spreadsheet dan folder sudah dibagikan ke akun engine.'; return; }
-
+      if (this.kurang.length) { this.error = 'Lengkapi dulu: ' + this.kurang.join(', ') + '.'; return; }
       this.busy = true;
-      var user = f.username.toLowerCase();
-      panggil({
-        action: 'daftar', orgNama: f.orgNama, adminNama: f.adminNama, email: f.email.toLowerCase(), username: user, password: f.password,
-        sheetUrl: f.sheetUrl, folderUrl: f.folderUrl, requireLogin: f.requireLogin, website: f.website
-      }).then(function (res) {
+      var email = f.email.toLowerCase();
+      var data = { action: 'daftar', adminNama: f.adminNama, email: email, password: f.password, sheetUrl: f.sheetUrl, requireLogin: f.requireLogin, website: f.website };
+      if (f.orgNama) data.orgNama = f.orgNama;
+      if (f.folderUrl) data.folderUrl = f.folderUrl;
+      panggil(data).then(function (res) {
         if (!res.ok) { self.error = res.error || 'Pendaftaran gagal.'; return; }
-        self.hasilId = res.id; self.hasilSheet = res.spreadsheetNama; self.hasilFolder = res.folderNama; self.hasilUser = user;
+        self.hasilId = res.id; self.hasilSheet = res.spreadsheetNama; self.hasilFolder = res.folderNama || ''; self.hasilUser = email;
         self.portalUrl = PORTAL_URL ? PORTAL_URL + (PORTAL_URL.indexOf('?') === -1 ? '?' : '&') + 'id=' + encodeURIComponent(res.id) : '';
-        self.f.password = ''; self.f.password2 = '';
+        self.f.password = '';
       }).catch(function (e) {
         self.error = e && e.name === 'AbortError'
           ? 'Server terlalu lama merespons. Periksa sheet "Admin" di masterUpload2026 sebelum mencoba lagi, agar tidak terdaftar dua kali.'
@@ -323,7 +307,7 @@ new Vue({
     },
     ulang: function () {
       this.hasilId = ''; this.error = '';
-      this.f = { orgNama: '', adminNama: '', email: '', username: '', password: '', password2: '', sheetUrl: '', folderUrl: '', requireLogin: false, sudahBagi: false, website: '' };
+      this.f = { orgNama: '', adminNama: '', email: '', password: '', sheetUrl: '', folderUrl: '', requireLogin: true, sudahBagi: false, website: '' }; this.lanjut = false;
     },
     salin: function (t) {
       var self = this;
