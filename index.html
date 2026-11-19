@@ -197,6 +197,7 @@
   .kcard.u-late .dlchip,.kcard.u-soon .dlchip{animation:denyut 1.6s ease-in-out infinite}
   .kb{padding:6px 16px 14px;border-top:1px solid rgba(16,24,40,.08)}
   /* Akordion terbuka: kepala berwarna lebih pekat, isi (detail) berwarna netral berbeda dari akordion tertutup */
+  .folderwarn{border-left:6px solid #e0a100;background:#fff8e6;margin-bottom:12px}
   .kcard.open{border-color:var(--uc,#2457d6);box-shadow:0 6px 18px rgba(16,24,40,.12)}
   .kcard.open .kh{background:#e3ebfb;background:color-mix(in srgb,var(--uc,#2457d6) 20%,#fff)}
   .kcard.open .kn{font-weight:800}
@@ -707,6 +708,12 @@
 
       <!-- ----- TAB DOKUMEN ----- -->
       <div v-if="tab==='dokumen'">
+        <div class="card pad folderwarn" v-if="tenant.folderSiap === false">
+          <b>&#128193; Folder Google Drive belum diatur</b>
+          <div class="muted" style="margin-top:4px" v-if="isAdmin">Dokumen belum bisa diunggah sampai folder Drive terhubung. Fitur lain (Deadline, Link Penting, pengguna) tetap berjalan.</div>
+          <div class="muted" style="margin-top:4px" v-else>Unggah dokumen belum aktif. Minta admin menghubungkan folder Google Drive terlebih dahulu.</div>
+          <div style="margin-top:10px" v-if="isAdmin"><button class="btn sm" @click="bukaTab('pengaturan')">Atur folder Drive</button></div>
+        </div>
         <div class="ringkas">
           <div><b>{{ stats.sudah }} dari {{ stats.total }}</b> dokumen sudah diunggah<span v-if="stats.wajibBelum"> &middot; <span style="color:var(--err)">{{ stats.wajibBelum }} wajib belum</span></span></div>
           <div class="bar"><i :style="{width: stats.persen+'%'}"></i></div>
@@ -835,9 +842,13 @@
 
             <label>Spreadsheet terhubung</label>
             <input type="text" :value="tenant.spreadsheetUrl" readonly>
-            <label>Folder Google Drive terhubung</label>
-            <input type="text" :value="tenant.folderUrl" readonly>
-            <div class="muted" style="margin-top:6px">Untuk mengganti spreadsheet atau folder, hubungi admin master.</div>
+            <label>Folder Google Drive untuk unggahan dokumen</label>
+            <input type="text" v-model.trim="folderBaru" :placeholder="tenant.folderUrl ? tenant.folderUrl : 'https://drive.google.com/drive/folders/...'">
+            <div class="muted" style="margin-top:6px" v-if="!tenant.folderUrl">Belum terhubung. Bagikan folder sebagai <b>Editor</b> ke <span class="idtag">{{ tenant.engineEmail || 'akun engine' }}</span>, tempel linknya di atas, lalu tekan Hubungkan.</div>
+            <div class="muted" style="margin-top:6px" v-else>Terhubung. Mengisi link lain akan mengganti folder untuk unggahan berikutnya (berkas lama tetap di folder lama).</div>
+            <div class="err" v-if="folderErr">{{ folderErr }}</div>
+            <div style="margin-top:8px"><button class="btn ghost sm" @click="simpanFolder" :disabled="!folderBaru || folderBusy">{{ folderBusy ? 'Memeriksa akses...' : (tenant.folderUrl ? 'Ganti folder' : 'Hubungkan folder') }}</button></div>
+            <div class="muted" style="margin-top:8px">Untuk mengganti spreadsheet, hubungi admin master.</div>
 
             <div class="err" v-if="set.error">{{ set.error }}</div>
             <div style="margin-top:16px"><button class="btn" @click="simpanSet">Simpan pengaturan</button></div>
@@ -1211,7 +1222,7 @@ new Vue({
       up: { open: false, doc: null, nama: '', items: [], busy: false, progress: 0, ke: 0, error: '' },
       docForm: { open: false, id: null, nama: '', kategori: '', keterangan: '', wajib: true, error: '' },
       userForm: { nama: '', username: '', password: '', role: 'anggota', error: '' },
-      set: { nama: '', requireLogin: false, maksMB: 10, error: '' },
+      set: { nama: '', requireLogin: false, maksMB: 10, error: '' }, folderBaru: '', folderErr: '', folderBusy: false,
       konfirm: { open: false, judul: '', teks: '', tombol: '', fn: null }
     };
   },
@@ -1637,6 +1648,16 @@ new Vue({
     },
 
     /* ---------- pengaturan (admin) ---------- */
+    simpanFolder: function () {
+      var self = this;
+      this.folderErr = ''; this.folderBusy = true;
+      this.engine({ action: 'folderSimpan', folderUrl: this.folderBaru }, { ms: 90000 }).then(function (res) {
+        self.folderBusy = false;
+        if (!res.ok) { self.folderErr = res.error; return; }
+        self.tenant = Object.assign({}, self.tenant, { folderUrl: res.folderUrl, folderSiap: true });
+        self.folderBaru = ''; self.tampilToast('Folder Drive terhubung: ' + res.folderNama);
+      }).catch(function (e) { self.folderBusy = false; self.folderErr = self.pesanGalat(e); });
+    },
     simpanSet: function () {
       var s = this.set, self = this;
       s.error = '';
@@ -1720,6 +1741,7 @@ new Vue({
 
     /* ---------- upload banyak file + caption ---------- */
     bukaUpload: function (d) {
+      if (this.tenant.folderSiap === false) { this.tampilToast(this.isAdmin ? 'Folder Drive belum diatur. Atur dulu di Pengaturan.' : 'Unggah belum aktif: admin belum menghubungkan folder Drive.'); if (this.isAdmin) this.bukaTab('pengaturan'); return; }
       var nm = this.namaTerkunci ? this.user.nama : (this.ls('get', 'dp_nama') || (this.user ? this.user.nama : ''));
       this.up = { open: true, doc: d, nama: nm, items: [], busy: false, progress: 0, ke: 0, error: '' };
     },
