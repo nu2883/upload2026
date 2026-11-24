@@ -110,6 +110,13 @@
   .kat .l{display:flex;justify-content:space-between;font-size:13px}
   .urow{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
   .urow:last-child{border-bottom:0}
+  .logrow{padding:10px 0;border-bottom:1px solid var(--line)}
+  .logrow:last-of-type{border-bottom:0}
+  .logtop{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .logw{margin-left:auto;white-space:nowrap}
+  .logdet{margin:4px 0 2px;word-break:break-word}
+  .logerr{color:#b42318;font-size:13px;margin-top:2px}
+  .logrow.gagal{background:#fff5f4;margin:0 -8px;padding-left:8px;padding-right:8px}
   .two{display:grid;grid-template-columns:1fr;gap:0 12px}
   @media(min-width:560px){.two{grid-template-columns:1fr 1fr}}
   .foot{text-align:center;margin-top:22px}
@@ -390,6 +397,7 @@
             <template v-if="user && isAdmin">
               <button class="pitem" @click="bukaTab('pengguna'); menuOpen=false">&#128101; Pengguna</button>
               <button class="pitem" @click="bukaTab('pengaturan'); menuOpen=false">&#9881; Pengaturan</button>
+              <button class="pitem" @click="bukaTab('log'); menuOpen=false">&#128221; Log aktivitas</button>
             </template>
             <div class="tfont">
               <span>Ukuran huruf (px)</span>
@@ -825,6 +833,40 @@
           </div>
         </div>
 
+        <!-- ----- TAB LOG AKTIVITAS (admin) ----- -->
+        <div v-if="tab==='log'">
+          <div class="card pad">
+            <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">
+              <h3 style="margin:0">Log aktivitas</h3>
+              <button class="btn ghost sm" @click="muatLog()" :disabled="logBusy">{{ logBusy ? 'Memuat...' : 'Muat ulang' }}</button>
+            </div>
+            <div class="chips" style="margin-top:12px">
+              <button class="chip" :class="{on: !logJenis}" @click="saringLog('')">Semua <span v-if="logTotalSemua">({{ logTotalSemua }})</span></button>
+              <button class="chip" :class="{on: logJenis===j}" v-for="j in logJenisList" :key="j" @click="saringLog(j)">{{ j }} <span v-if="logData.hitung[j]">({{ logData.hitung[j] }})</span></button>
+            </div>
+            <div class="tools" style="margin-bottom:10px">
+              <select v-model="logUser" @change="muatLog()">
+                <option value="">Semua pengguna</option>
+                <option v-for="p in logData.pengguna" :key="p.u" :value="p.u">{{ p.n || p.u }} ({{ p.u }})</option>
+              </select>
+            </div>
+            <div class="err" v-if="logErr">{{ logErr }}</div>
+            <div class="muted" v-if="!logBusy && !logData.log.length && !logErr">Belum ada aktivitas yang tercatat.</div>
+            <div class="logrow" v-for="(r, i) in logData.log" :key="i + r.w" :class="{gagal: r.h.indexOf('Gagal') === 0}">
+              <div class="logtop">
+                <span class="badge b-cat">{{ r.j }}</span>
+                <b>{{ r.a }}</b>
+                <span class="muted logw">{{ fmtLog(r.w) }}</span>
+              </div>
+              <div class="logdet" v-if="r.d">{{ r.d }}</div>
+              <div class="muted">{{ r.n || r.u }}<span v-if="r.n"> &middot; {{ r.u }}</span></div>
+              <div class="logerr" v-if="r.h.indexOf('Gagal') === 0">{{ r.h }}</div>
+            </div>
+            <div style="margin-top:12px" v-if="logData.total > logData.log.length"><button class="btn ghost sm" @click="logBatas += 200; muatLog()" :disabled="logBusy">Tampilkan lebih banyak ({{ logData.log.length }} dari {{ logData.total }})</button></div>
+            <div class="muted" style="margin-top:12px">Mencatat login, unggah/unduh/hapus berkas, perubahan deadline, link, pengguna, dan pengaturan. Deadline privat tidak dicatat. Disimpan maksimal {{ logData.maks || 3000 }} catatan terbaru di sheet <b>Log</b>; yang lebih lama dihapus otomatis.</div>
+          </div>
+        </div>
+
         <!-- ----- TAB PENGATURAN (admin) ----- -->
         <div v-if="tab==='pengaturan'">
           <div class="card pad">
@@ -1222,11 +1264,17 @@ new Vue({
       up: { open: false, doc: null, nama: '', items: [], busy: false, progress: 0, ke: 0, error: '' },
       docForm: { open: false, id: null, nama: '', kategori: '', keterangan: '', wajib: true, error: '' },
       userForm: { nama: '', username: '', password: '', role: 'anggota', error: '' },
+      logData: { log: [], total: 0, hitung: {}, pengguna: [], maks: 0 }, logJenis: '', logUser: '', logBatas: 200, logBusy: false, logErr: '', logJenisList: ['Login', 'Dokumen', 'Deadline', 'Link', 'Pengguna', 'Pengaturan'],
       set: { nama: '', requireLogin: false, maksMB: 10, error: '' }, folderBaru: '', folderErr: '', folderBusy: false,
       konfirm: { open: false, judul: '', teks: '', tombol: '', fn: null }
     };
   },
   computed: {
+    logTotalSemua: function () {
+      var h = this.logData.hitung || {}, n = 0;
+      for (var k in h) n += h[k];
+      return n;
+    },
     bisaKelola: function () { return !!this.user; },          // semua pengguna yang login; Pengguna & Pengaturan tetap khusus admin
     isAdmin: function () { return !!this.user && this.user.role === 'admin'; },
     tampilGanti: function () { return !this.user; },
@@ -1644,6 +1692,7 @@ new Vue({
         var x = this.tenant;
         this.set = { nama: x.nama, requireLogin: !!x.requireLogin, maksMB: x.maksMB || 10, error: '' };
       }
+      if (t === 'log') { this.logJenis = ''; this.logUser = ''; this.logBatas = 200; this.muatLog(); }
       if (t === 'pengguna') { this.userForm = { nama: '', username: '', password: '', role: 'anggota', error: '' }; this.muatUsers(); }
     },
 
@@ -1700,6 +1749,22 @@ new Vue({
           self.tampilToast(res.drive === 'ditolak' ? 'Catatan dihapus, tetapi file lama di Google Drive perlu dihapus manual.' : 'Berkas dihapus.'); self.segarkan();
         }).catch(function (e) { self.galat(e); });
       });
+    },
+
+    /* ---------- log aktivitas (admin) ---------- */
+    muatLog: function () {
+      var self = this;
+      this.logBusy = true; this.logErr = '';
+      this.engine({ action: 'logBaca', jenis: this.logJenis, user: this.logUser, batas: this.logBatas }, { retry: true, senyap: true, tanpaPil: true }).then(function (res) {
+        self.logBusy = false;
+        if (!res.ok) { self.logErr = res.error || 'Gagal memuat log.'; return; }
+        self.logData = { log: res.log || [], total: res.total || 0, hitung: res.hitung || {}, pengguna: res.pengguna || [], maks: res.maks || 0 };
+      }).catch(function (e) { self.logBusy = false; self.logErr = self.pesanGalat(e); });
+    },
+    saringLog: function (j) { this.logJenis = j; this.logBatas = 200; this.muatLog(); },
+    fmtLog: function (w) {
+      var m = String(w).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})/);
+      return m ? m[3] + '/' + m[2] + '/' + m[1] + ' ' + m[4] : w;
     },
 
     /* ---------- pengguna (admin) ---------- */
