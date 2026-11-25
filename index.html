@@ -365,6 +365,37 @@
   .lcard:hover .lopen{transform:translate(3px,-3px)}
   .lic.goyang{animation:goyang .9s ease-in-out}
   .seg button{transition:background .2s,color .2s}
+  /* --- tombol salin & kalender --- */
+  .kw{position:relative}
+  .salin-f{position:absolute;right:-54px;top:12px;width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:#fff;box-shadow:0 4px 14px rgba(16,24,40,.14);cursor:pointer;display:none;align-items:center;justify-content:center;color:var(--muted);padding:0;animation:buka .2s ease-out;transition:color .15s,border-color .15s,transform .12s}
+  .salin-f:hover{color:var(--pri);border-color:var(--pri)}
+  .salin-f:active{transform:scale(.92)}
+  .salin-f.ok,.salin-in.ok{color:var(--ok);border-color:var(--ok)}
+  .salin-f .isalin{width:19px;height:19px}
+  .isalin{width:15px;height:15px;vertical-align:-3px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+  .mini.oks{color:var(--ok);border-color:var(--ok)}
+  .acts.left{flex-wrap:wrap}.acts.left .btn{white-space:nowrap}
+  @media(max-width:580px){.salin-in .stx{display:none}.salin-in{padding-left:11px;padding-right:11px}}
+  @media(min-width:980px){.salin-f{display:flex}.salin-in{display:none!important}}
+  .kal{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px;animation:masuk .3s ease-out}
+  .kal-h{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .kal-h b{flex:1;text-align:center;text-transform:capitalize;font-size:15px}
+  .kal-w,.kal-g{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+  .kal-w span{font-size:12px;color:var(--muted);text-align:center;padding:2px 0;font-weight:600}
+  .kal-c{border:1.5px solid transparent;background:#f6f7f9;border-radius:10px;min-height:54px;padding:5px 3px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;font:inherit;color:var(--text);transition:background .15s,border-color .15s}
+  .kal-c:hover{background:#eaf0fb}
+  .kal-c.luar{opacity:.38}
+  .kal-c.kini .kal-n{background:var(--pri);color:#fff}
+  .kal-c.pilih{border-color:var(--pri);background:#e8efff}
+  .kal-n{font-size:13px;font-weight:700;line-height:22px;min-width:22px;text-align:center;border-radius:99px;padding:0 4px}
+  .kal-d{display:flex;gap:3px;align-items:center;flex-wrap:wrap;justify-content:center}
+  .kal-d i{width:7px;height:7px;border-radius:50%;display:block}
+  .kal-d i.sl,.kal-t b.sl{opacity:.5}
+  .kal-d em,.kal-t em{font-size:10px;font-style:normal;color:var(--muted)}
+  .kal-t{display:none;width:100%;flex-direction:column;gap:2px}
+  .kal-t b{display:block;font-size:11px;font-weight:600;border-left:3px solid;border-radius:4px;padding:1px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
+  .kal-info{margin:0 2px 10px;font-size:14px}
+  @media(min-width:640px){.kal-c{min-height:88px;align-items:stretch;padding:6px}.kal-n{align-self:flex-start}.kal-d{display:none}.kal-t{display:flex}}
   body.noanim *,body.noanim *::before,body.noanim *::after{animation:none!important}
   @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important}}
   .tanim{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;font-size:14px;color:var(--text)}
@@ -510,15 +541,21 @@
         <div class="chips">
           <button class="chip" :class="{on: kegFilter===s.v}" v-for="s in kegOpsi" :key="s.v" @click="kegFilter=s.v">{{ s.t }} ({{ s.n }})</button>
           <span class="spacer"></span>
+          <div class="seg"><button :class="{on: kegView==='daftar'}" @click="setKegView('daftar')">&#9776; Daftar</button><button :class="{on: kegView==='kalender'}" @click="setKegView('kalender')">&#128197; Kalender</button></div>
           <button class="linkbtn" @click="segarkan(true)">Muat ulang</button>
         </div>
 
         <div v-if="loading" class="card empty">Memuat kegiatan...</div>
-        <div v-else-if="!kegTampil.length" class="card empty">
-          {{ kegiatan.length ? 'Tidak ada kegiatan pada filter ini.' : (bisaKelola ? 'Belum ada kegiatan. Tekan "+ Kegiatan" untuk membuat yang pertama.' : 'Belum ada kegiatan.') }}
+        <template v-if="!loading && kegView==='kalender'">
+          <kalender :items="kegKalItems" :dipilih="kegHari" @pilih="pilihHariKeg"></kalender>
+          <div class="kal-info"><b v-if="kegHari">Kegiatan pada {{ tglDl(kegHari) }} ({{ kegDaftar.length }})</b><span v-else>Pilih tanggal untuk melihat kegiatannya.</span><span class="muted" v-if="kegTanpaTgl"> &middot; {{ kegTanpaTgl }} kegiatan tanpa deadline tidak tampil di kalender</span></div>
+        </template>
+        <div v-if="!loading && !kegDaftar.length && (kegView==='daftar' || kegHari)" class="card empty">
+          {{ kegView==='kalender' ? 'Tidak ada kegiatan pada tanggal ini.' : (kegiatan.length ? 'Tidak ada kegiatan pada filter ini.' : (bisaKelola ? 'Belum ada kegiatan. Tekan "+ Kegiatan" untuk membuat yang pertama.' : 'Belum ada kegiatan.')) }}
         </div>
 
-        <div class="kcard" :class="['u-'+k.v.kelas, {open: bukaKeg===k.id}]" :style="{'--uc': k.v.warna, '--ub': k.v.latar, animationDelay: tunda(i)}" v-for="(k, i) in kegTampil" :key="k.id">
+        <div class="kw" v-for="(k, i) in kegDaftar" :key="k.id">
+        <div class="kcard" :class="['u-'+k.v.kelas, {open: bukaKeg===k.id}]" :style="{'--uc': k.v.warna, '--ub': k.v.latar, animationDelay: tunda(i)}">
           <div class="kh" @click="toggleKeg(k)">
             <button class="cbk" :class="{on: k.selesai}" v-if="!k.tugas.length" :disabled="!!k.antre" @click.stop="centangKeg(k)" :title="k.selesai ? 'Batalkan selesai' : 'Tandai kegiatan selesai'">
               <svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
@@ -583,13 +620,16 @@
               <input type="text" v-model.trim="tugasInput" maxlength="160" placeholder="Tambah tugas..." @keyup.enter="tambahTugas(k)">
               <button class="btn" @click="tambahTugas(k)" :disabled="!tugasInput">Tambah</button>
             </div>
-            <div class="acts left" v-if="bisaKelola && !k.antre">
-              <button class="btn ghost sm" @click="bukaKegForm(k)">Edit kegiatan</button>
-              <button class="btn danger sm" @click="tanyaHapusKeg(k)">Hapus kegiatan</button>
+            <div class="acts left" v-if="!k.antre">
+              <button class="btn ghost sm" v-if="bisaKelola" @click="bukaKegForm(k)">Edit kegiatan</button>
+              <button class="btn danger sm" v-if="bisaKelola" @click="tanyaHapusKeg(k)">Hapus kegiatan</button>
+              <button class="btn ghost sm salin-in" :class="{ok: salinId==='keg:'+k.id}" @click="salinKeg(k)" title="Salin ringkasan untuk ditempel"><ikon-salin :ok="salinId==='keg:'+k.id"></ikon-salin> <span class="stx">{{ salinId==='keg:'+k.id ? 'Tersalin' : 'Salin' }}</span></button>
             </div>
           </div>
         </div>
-        <pager :hal="kegHalAktif" :total="kegTotalHal" :jumlah="kegSaring.length" :per="perKeg" satuan="kegiatan" @pindah="halamanKeg" @ukuran="ubahUkuran('keg', $event)"></pager>
+        <button class="salin-f" :class="{ok: salinId==='keg:'+k.id}" v-if="bukaKeg===k.id" @click="salinKeg(k)" title="Salin ringkasan untuk ditempel" aria-label="Salin ringkasan"><ikon-salin :ok="salinId==='keg:'+k.id"></ikon-salin></button>
+        </div>
+        <pager v-if="kegView==='daftar'" :hal="kegHalAktif" :total="kegTotalHal" :jumlah="kegSaring.length" :per="perKeg" satuan="kegiatan" @pindah="halamanKeg" @ukuran="ubahUkuran('keg', $event)"></pager>
       </div>
 
       <!-- ----- TAB DEADLINE PRIVAT (hanya pemilik) ----- -->
@@ -618,14 +658,20 @@
         <div class="chips">
           <button class="chip" :class="{on: privFilter===s.v}" v-for="s in privOpsi" :key="s.v" @click="privFilter=s.v">{{ s.t }} ({{ s.n }})</button>
           <span class="spacer"></span>
+          <div class="seg"><button :class="{on: privView==='daftar'}" @click="setPrivView('daftar')">&#9776; Daftar</button><button :class="{on: privView==='kalender'}" @click="setPrivView('kalender')">&#128197; Kalender</button></div>
           <button class="linkbtn" @click="segarkan(true)">Muat ulang</button>
         </div>
 
-        <div v-if="!privTampil.length" class="card empty">
-          {{ priv.length + privAntre.length ? 'Tidak ada kegiatan pada filter ini.' : 'Belum ada deadline privat. Tekan "+ Kegiatan" untuk membuat yang pertama.' }}
+        <template v-if="privView==='kalender'">
+          <kalender :items="privKalItems" :dipilih="privHari" @pilih="pilihHariPriv"></kalender>
+          <div class="kal-info"><b v-if="privHari">Kegiatan pada {{ tglDl(privHari) }} ({{ privDaftar.length }})</b><span v-else>Pilih tanggal untuk melihat kegiatannya.</span><span class="muted" v-if="privTanpaTgl"> &middot; {{ privTanpaTgl }} kegiatan tanpa deadline tidak tampil di kalender</span></div>
+        </template>
+        <div v-if="!privDaftar.length && (privView==='daftar' || privHari)" class="card empty">
+          {{ privView==='kalender' ? 'Tidak ada kegiatan pada tanggal ini.' : (priv.length + privAntre.length ? 'Tidak ada kegiatan pada filter ini.' : 'Belum ada deadline privat. Tekan "+ Kegiatan" untuk membuat yang pertama.') }}
         </div>
 
-        <div class="kcard" :class="['u-'+k.v.kelas, {open: bukaPriv===k.id}]" :style="{'--uc': k.v.warna, '--ub': k.v.latar, animationDelay: tunda(i)}" v-for="(k, i) in privTampil" :key="k.id">
+        <div class="kw" v-for="(k, i) in privDaftar" :key="k.id">
+        <div class="kcard" :class="['u-'+k.v.kelas, {open: bukaPriv===k.id}]" :style="{'--uc': k.v.warna, '--ub': k.v.latar, animationDelay: tunda(i)}">
           <div class="kh" @click="togglePriv(k)">
             <button class="cbk" :class="{on: k.selesai}" v-if="!k.tugas.length" :disabled="!!k.antre" @click.stop="centangPrivKeg(k)" :title="k.selesai ? 'Batalkan selesai' : 'Tandai kegiatan selesai'">
               <svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
@@ -693,10 +739,13 @@
             <div class="acts left" v-if="!k.antre">
               <button class="btn ghost sm" @click="bukaPrivForm(k)">Edit kegiatan</button>
               <button class="btn danger sm" @click="tanyaHapusPriv(k)">Hapus kegiatan</button>
+              <button class="btn ghost sm salin-in" :class="{ok: salinId==='priv:'+k.id}" @click="salinKeg(k, 'priv:')" title="Salin ringkasan untuk ditempel"><ikon-salin :ok="salinId==='priv:'+k.id"></ikon-salin> <span class="stx">{{ salinId==='priv:'+k.id ? 'Tersalin' : 'Salin' }}</span></button>
             </div>
           </div>
         </div>
-        <pager :hal="privHalAktif" :total="privTotalHal" :jumlah="privSaring.length" :per="perPriv" satuan="kegiatan" @pindah="halamanPriv" @ukuran="ubahUkuran('priv', $event)"></pager>
+        <button class="salin-f" :class="{ok: salinId==='priv:'+k.id}" v-if="bukaPriv===k.id" @click="salinKeg(k, 'priv:')" title="Salin ringkasan untuk ditempel" aria-label="Salin ringkasan"><ikon-salin :ok="salinId==='priv:'+k.id"></ikon-salin></button>
+        </div>
+        <pager v-if="privView==='daftar'" :hal="privHalAktif" :total="privTotalHal" :jumlah="privSaring.length" :per="perPriv" satuan="kegiatan" @pindah="halamanPriv" @ukuran="ubahUkuran('priv', $event)"></pager>
       </div>
 
       <!-- ----- TAB LINK PENTING ----- -->
@@ -743,9 +792,12 @@
                 <button class="btn ghost sm" :title="l.galat" @click="kirimLink(l)">Coba lagi</button>
                 <button class="btn danger sm" @click="buangLink(l)">Buang</button>
               </template>
-              <template v-else-if="bisaKelola">
+              <template v-else>
+                <button class="mini" :class="{oks: salinId==='lnk:'+l.id}" :title="salinId==='lnk:'+l.id ? 'Tersalin' : 'Salin link'" @click="salinLink(l)">{{ salinId==='lnk:'+l.id ? '\u2713' : '\u29c9' }}</button>
+                <template v-if="bisaKelola">
                 <button class="mini" title="Ubah" @click="bukaLinkForm(l)">&#9998;</button>
                 <button class="mini" title="Hapus" @click="tanyaHapusLink(l)">&#10005;</button>
+                </template>
               </template>
             </span>
           </div>
@@ -761,7 +813,7 @@
               </span>
               <span class="lopen">&#8599;</span>
             </a>
-            <div class="lbar" :class="{gagal: l.antre==='gagal'}" v-if="l.antre || bisaKelola">
+            <div class="lbar" :class="{gagal: l.antre==='gagal'}">
               <template v-if="l.antre==='proses'"><ikon-awan s="proses"></ikon-awan> Menyimpan...</template>
               <template v-else-if="l.antre==='gagal'">
                 <ikon-awan s="gagal"></ikon-awan> <span style="flex:1">{{ l.galat }}</span>
@@ -769,8 +821,11 @@
                 <button class="btn danger sm" @click="buangLink(l)">Buang</button>
               </template>
               <template v-else>
+                <button class="mini" :class="{oks: salinId==='lnk:'+l.id}" title="Salin link" @click="salinLink(l)">{{ salinId==='lnk:'+l.id ? '\u2713 Tersalin' : '\u29c9 Salin' }}</button>
+                <template v-if="bisaKelola">
                 <button class="mini" title="Ubah" @click="bukaLinkForm(l)">&#9998; Ubah</button>
                 <button class="mini" title="Hapus" @click="tanyaHapusLink(l)">&#10005; Hapus</button>
+                </template>
               </template>
             </div>
           </div>
@@ -808,7 +863,8 @@
           {{ docs.length ? 'Tidak ada dokumen yang cocok dengan pencarian.' : (bisaKelola ? 'Belum ada dokumen. Tekan "+ Dokumen" atau isi sheet Dokumen di spreadsheet.' : 'Belum ada dokumen.') }}
         </div>
 
-        <div class="card acc" :class="{open: bukaId===d.id}" :style="{animationDelay: tunda(i)}" v-for="(d, i) in tampil" :key="d.id">
+        <div class="kw" v-for="(d, i) in tampil" :key="d.id">
+        <div class="card acc" :class="{open: bukaId===d.id}" :style="{animationDelay: tunda(i)}">
           <button class="acc-h" @click="toggle(d)">
             <span class="acc-n">{{ d.nama }}</span>
             <span class="badge bdg" :key="d.files.length ? 'ok' : 'no'" :class="d.files.length ? 'b-ok' : 'b-no'">{{ d.files.length ? 'Sudah diunggah' + (d.files.length > 1 ? ' (' + d.files.length + ')' : '') : 'Belum diunggah' }}</span>
@@ -850,8 +906,11 @@
               <button class="btn sm" @click="bukaUpload(d)">{{ d.files.length ? 'Upload lagi' : 'Upload' }}</button>
               <button class="btn ghost sm" v-if="bisaKelola" @click="bukaDocForm(d)">Edit dokumen</button>
               <button class="btn danger sm" v-if="bisaKelola" @click="tanyaHapusDoc(d)">Hapus dokumen</button>
+              <button class="btn ghost sm salin-in" :class="{ok: salinId==='dok:'+d.id}" @click="salinDok(d)" title="Salin ringkasan untuk ditempel"><ikon-salin :ok="salinId==='dok:'+d.id"></ikon-salin> <span class="stx">{{ salinId==='dok:'+d.id ? 'Tersalin' : 'Salin' }}</span></button>
             </div>
           </div>
+        </div>
+        <button class="salin-f" :class="{ok: salinId==='dok:'+d.id}" v-if="bukaId===d.id" @click="salinDok(d)" title="Salin ringkasan untuk ditempel" aria-label="Salin ringkasan"><ikon-salin :ok="salinId==='dok:'+d.id"></ikon-salin></button>
         </div>
         <pager :hal="halAktif" :total="totalHal" :jumlah="filtered.length" :per="perHal" satuan="dokumen" @pindah="halaman" @ukuran="ubahUkuran('dok', $event)"></pager>
       </div>
@@ -1273,6 +1332,44 @@ Vue.component('pager', {
   template: '<div class="pager" v-if="jumlah > 10"><button class="btn ghost sm" :disabled="hal <= 1" @click="$emit(\'pindah\', -1)">&larr; Sebelumnya</button><span class="muted">Halaman {{ hal }} dari {{ total }} &middot; {{ jumlah }} {{ satuan }}</span><label class="per">Tampil <select :value="per" @change="$emit(\'ukuran\', Number($event.target.value))"><option v-for="n in [10, 20, 30, 100]" :key="n" :value="n">{{ n }}</option></select> per halaman</label><button class="btn ghost sm" :disabled="hal >= total" @click="$emit(\'pindah\', 1)">Berikutnya &rarr;</button></div>'
 });
 
+Vue.component('ikon-salin', {
+  props: ['ok'],
+  template: '<svg class="isalin" viewBox="0 0 24 24"><path v-if="ok" d="M5 12.5l4.5 4.5L19 7.5"/><g v-else><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></g></svg>'
+});
+
+/* Kalender bulanan: menampilkan deadline kegiatan per tanggal. items: [{id, nama, deadline:'yyyy-MM-dd', warna, latar, selesai}] */
+Vue.component('kalender', {
+  props: ['items', 'dipilih'],
+  data: function () { var d = new Date(); return { th: d.getFullYear(), bl: d.getMonth() }; },
+  computed: {
+    judul: function () { return new Date(this.th, this.bl, 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }); },
+    sel: function () {
+      var z = function (n) { return (n < 10 ? '0' : '') + n; }, kunci = function (d) { return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()); };
+      var peta = {};
+      (this.items || []).forEach(function (x) { if (x.deadline) (peta[x.deadline] = peta[x.deadline] || []).push(x); });
+      var awal = new Date(this.th, this.bl, 1), geser = (awal.getDay() + 6) % 7, hariBulan = new Date(this.th, this.bl + 1, 0).getDate();
+      var baris = Math.ceil((geser + hariBulan) / 7) * 7, kini = kunci(new Date()), out = [];
+      for (var i = 0; i < baris; i++) {
+        var d = new Date(this.th, this.bl, 1 - geser + i), k = kunci(d);
+        out.push({ key: k, hari: d.getDate(), luar: d.getMonth() !== this.bl, kini: k === kini, list: peta[k] || [] });
+      }
+      return out;
+    }
+  },
+  methods: {
+    geserBulan: function (n) { var d = new Date(this.th, this.bl + n, 1); this.th = d.getFullYear(); this.bl = d.getMonth(); },
+    hariIni: function () { var d = new Date(); this.th = d.getFullYear(); this.bl = d.getMonth(); }
+  },
+  template: '<div class="kal">' +
+    '<div class="kal-h"><button class="btn ghost sm" @click="geserBulan(-1)" aria-label="Bulan sebelumnya">&lsaquo;</button><b>{{ judul }}</b><button class="btn ghost sm" @click="geserBulan(1)" aria-label="Bulan berikutnya">&rsaquo;</button><button class="linkbtn" @click="hariIni">Hari ini</button></div>' +
+    '<div class="kal-w"><span v-for="n in [\'Sen\',\'Sel\',\'Rab\',\'Kam\',\'Jum\',\'Sab\',\'Min\']" :key="n">{{ n }}</span></div>' +
+    '<div class="kal-g"><button type="button" v-for="c in sel" :key="c.key" class="kal-c" :class="{luar: c.luar, kini: c.kini, pilih: dipilih === c.key}" @click="$emit(\'pilih\', c.key)">' +
+      '<span class="kal-n">{{ c.hari }}</span>' +
+      '<span class="kal-d"><i v-for="x in c.list.slice(0, 3)" :key="x.id" :class="{sl: x.selesai}" :style="{background: x.warna}"></i><em v-if="c.list.length > 3">+{{ c.list.length - 3 }}</em></span>' +
+      '<span class="kal-t"><b v-for="x in c.list.slice(0, 2)" :key="x.id" :class="{sl: x.selesai}" :style="{background: x.latar, color: x.warna, borderColor: x.warna}">{{ x.nama }}</b><em v-if="c.list.length > 2">+{{ c.list.length - 2 }} lagi</em></span>' +
+    '</button></div></div>'
+});
+
 function prefTersimpan(kunci, boleh, def) {
   var v = def;
   try { v = localStorage.getItem(kunci) || def; } catch (e) {}
@@ -1405,7 +1502,7 @@ new Vue({
       registrasiUrl: REGISTRASI_URL,
       tab: 'dokumen', tabSiap: false, kegiatan: [], bukaKeg: '', kegFilter: 'semua', tugasInput: '', editT: { id: '', judul: '' }, sekarang: Date.now(),
       kegForm: { open: false, busy: false, id: null, nama: '', keterangan: '', deadline: '', tugas: '', error: '' },
-      q: '', kategori: '', status: 'semua', toast: '', toastTimer: null, bukaId: '', menuOpen: false, anim: true, bgJalan: 0, gantiPw: { open: false, wajib: false, lama: '', baru: '', ulang: '', lihat: false, error: '', busy: false }, resetPw: { open: false, u: null, pw: '', error: '', busy: false }, fontPx: 15, priv: [], privAntre: [], bukaPriv: '', privTugasInput: '', editPT: { id: '', judul: '' }, qPriv: '', privFilter: 'semua', halPriv: 1, perPriv: ukuranTersimpan('dp_per_priv'), privForm: { open: false, busy: false, id: null, nama: '', keterangan: '', deadline: '', tugas: '', error: '' }, rekapOpen: false, links: [], qLink: '', linkView: prefTersimpan('dp_link_view', ['grid', 'list'], 'grid'), linkUrut: prefTersimpan('dp_link_urut', ['populer', 'nama', 'nama-desc', 'terbaru'], 'populer'), klikBuf: {}, klikTimer: null, halLink: 1, perLink: ukuranTersimpan('dp_per_link'), linkForm: { open: false, busy: false, id: null, judul: '', url: '', keterangan: '', error: '' }, lihatPw: false, lupa: { open: false, email: '', busy: false, error: '', pesan: '' }, kegAntre: [], hal: 1, perHal: ukuranTersimpan('dp_per_dok'), halKeg: 1, perKeg: ukuranTersimpan('dp_per_keg'), qKeg: '', antrean: [], aktifKirim: 0, segarTimer: null, antreTimer: null, peringatIdb: false,
+      q: '', kategori: '', status: 'semua', toast: '', toastTimer: null, bukaId: '', menuOpen: false, anim: true, salinId: '', salinTimer: null, kegView: prefTersimpan('dp_keg_view', ['daftar', 'kalender'], 'daftar'), privView: prefTersimpan('dp_priv_view', ['daftar', 'kalender'], 'daftar'), kegHari: '', privHari: '', bgJalan: 0, gantiPw: { open: false, wajib: false, lama: '', baru: '', ulang: '', lihat: false, error: '', busy: false }, resetPw: { open: false, u: null, pw: '', error: '', busy: false }, fontPx: 15, priv: [], privAntre: [], bukaPriv: '', privTugasInput: '', editPT: { id: '', judul: '' }, qPriv: '', privFilter: 'semua', halPriv: 1, perPriv: ukuranTersimpan('dp_per_priv'), privForm: { open: false, busy: false, id: null, nama: '', keterangan: '', deadline: '', tugas: '', error: '' }, rekapOpen: false, links: [], qLink: '', linkView: prefTersimpan('dp_link_view', ['grid', 'list'], 'grid'), linkUrut: prefTersimpan('dp_link_urut', ['populer', 'nama', 'nama-desc', 'terbaru'], 'populer'), klikBuf: {}, klikTimer: null, halLink: 1, perLink: ukuranTersimpan('dp_per_link'), linkForm: { open: false, busy: false, id: null, judul: '', url: '', keterangan: '', error: '' }, lihatPw: false, lupa: { open: false, email: '', busy: false, error: '', pesan: '' }, kegAntre: [], hal: 1, perHal: ukuranTersimpan('dp_per_dok'), halKeg: 1, perKeg: ukuranTersimpan('dp_per_keg'), qKeg: '', antrean: [], aktifKirim: 0, segarTimer: null, antreTimer: null, peringatIdb: false,
       pv: { open: false, loading: false, error: '', url: '', jenis: '', nama: '', file: '' },
       up: { open: false, doc: null, nama: '', items: [], busy: false, progress: 0, ke: 0, error: '' },
       docForm: { open: false, id: null, nama: '', kategori: '', keterangan: '', wajib: true, error: '' },
@@ -1562,6 +1659,18 @@ new Vue({
     },
     kegTotalHal: function () { return Math.max(1, Math.ceil(this.kegSaring.length / this.perKeg)); },
     kegHalAktif: function () { return Math.min(Math.max(this.halKeg, 1), this.kegTotalHal); },
+    kegDaftar: function () {
+      var h = this.kegHari;
+      return this.kegView === 'kalender' ? (h ? this.kegSaring.filter(function (k) { return k.deadline === h; }) : []) : this.kegTampil;
+    },
+    kegKalItems: function () { return this.kegSaring.filter(function (k) { return k.deadline; }).map(function (k) { return { id: k.id, nama: k.nama, deadline: k.deadline, warna: k.v.warna, latar: k.v.latar, selesai: k.selesai }; }); },
+    kegTanpaTgl: function () { return this.kegSaring.filter(function (k) { return !k.deadline; }).length; },
+    privDaftar: function () {
+      var h = this.privHari;
+      return this.privView === 'kalender' ? (h ? this.privSaring.filter(function (k) { return k.deadline === h; }) : []) : this.privTampil;
+    },
+    privKalItems: function () { return this.privSaring.filter(function (k) { return k.deadline; }).map(function (k) { return { id: k.id, nama: k.nama, deadline: k.deadline, warna: k.v.warna, latar: k.v.latar, selesai: k.selesai }; }); },
+    privTanpaTgl: function () { return this.privSaring.filter(function (k) { return !k.deadline; }).length; },
     kegTampil: function () { var a = (this.kegHalAktif - 1) * this.perKeg; return this.kegSaring.slice(a, a + this.perKeg); },
     jumlahMendesak: function () {
       return this.kegiatanV.filter(function (k) { return !k.selesai && k.hari !== null && k.hari <= 3; }).length;
@@ -2161,6 +2270,56 @@ new Vue({
       var a = new Date(d.getFullYear(), d.getMonth(), d.getDate()), b = new Date(+p[0], +p[1] - 1, +p[2]);
       return Math.round((a - b) / 86400000);
     },
+    /* ---------- tombol salin & kalender ---------- */
+    hariIniKey: function () {
+      var d = new Date(), z = function (n) { return (n < 10 ? '0' : '') + n; };
+      return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate());
+    },
+    setKegView: function (v) { this.kegView = v; this.ls('set', 'dp_keg_view', v); if (v === 'kalender' && !this.kegHari) this.kegHari = this.hariIniKey(); },
+    setPrivView: function (v) { this.privView = v; this.ls('set', 'dp_priv_view', v); if (v === 'kalender' && !this.privHari) this.privHari = this.hariIniKey(); },
+    pilihHariKeg: function (k) { this.kegHari = this.kegHari === k ? '' : k; this.bukaKeg = ''; },
+    pilihHariPriv: function (k) { this.privHari = this.privHari === k ? '' : k; this.bukaPriv = ''; },
+    salin: function (teks, id) {
+      var self = this;
+      function beres() {
+        self.salinId = id; clearTimeout(self.salinTimer);
+        self.salinTimer = setTimeout(function () { self.salinId = ''; }, 1700);
+        self.tampilToast('Tersalin. Tinggal tempel.');
+      }
+      function cadangan() {
+        try {
+          var ta = document.createElement('textarea');
+          ta.value = teks; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+          document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, 999999);
+          var ok = document.execCommand('copy'); document.body.removeChild(ta);
+          if (ok) beres(); else self.tampilToast('Browser ini tidak mengizinkan salin otomatis.');
+        } catch (e) { self.tampilToast('Browser ini tidak mengizinkan salin otomatis.'); }
+      }
+      if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(teks).then(beres, cadangan); else cadangan();
+    },
+    salinKeg: function (k, awalan) {
+      var self = this, b = ['📌 ' + k.nama];
+      if (k.deadline) b.push('Deadline: ' + this.tglDl(k.deadline) + (k.v && k.v.label ? ' (' + k.v.label + ')' : ''));
+      if (k.tugas.length) {
+        b.push('Progres: ' + k.selesaiN + ' dari ' + k.tugas.length + ' tugas (' + k.persen + '%)');
+        k.tugas.forEach(function (t) {
+          b.push((t.selesai ? '☑ ' : '☐ ') + t.judul + (t.selesai ? ', selesai' + (t.oleh ? ' oleh ' + t.oleh : '') + (t.tgl ? ' · ' + self.tglJam(t.tgl) : '') : ''));
+        });
+      } else {
+        b.push('Status: ' + (k.selesai ? 'Selesai' + (k.oleh ? ' oleh ' + k.oleh : '') + (k.tgl ? ' · ' + this.tglJam(k.tgl) : '') : 'Belum selesai'));
+      }
+      this.salin(b.join('\n'), (awalan || 'keg:') + k.id);
+    },
+    salinDok: function (d) {
+      var self = this, b = ['📄 ' + d.nama];
+      b.push('Status: ' + (d.files.length ? 'Sudah diunggah' + (d.files.length > 1 ? ' (' + d.files.length + ' berkas)' : '') : 'Belum diunggah'));
+      var meta = [d.kategori, d.wajib ? 'Wajib' : ''].filter(Boolean).join(' · ');
+      if (meta) b.push('Kategori: ' + meta);
+      d.files.forEach(function (f) { b.push('• ' + (f.caption || f.namaFile) + (f.pengunggah ? ', diunggah ' + f.pengunggah : '') + (f.tgl ? ' · ' + self.tgl(f.tgl) : '')); });
+      this.salin(b.join('\n'), 'dok:' + d.id);
+    },
+    salinLink: function (l) { this.salin(l.judul + '\n' + l.url, 'lnk:' + l.id); },
+
     tglDl: function (dl) {
       var p = dl.split('-');
       return new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
