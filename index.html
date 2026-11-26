@@ -427,6 +427,7 @@
   .overlay{z-index:80}
   .toast{z-index:90}
   .pill{z-index:90}
+  .dldate{font-weight:800;color:#c62828}
   body.noanim *,body.noanim *::before,body.noanim *::after{animation:none!important}
   @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important}}
   .tanim{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;font-size:14px;color:var(--text)}
@@ -607,7 +608,7 @@
               <div class="kmeta">
                 <span class="dlchip">{{ k.v.label }}</span>
                 <span class="telat" v-if="k.selesai && k.telat > 0">Selesai terlambat {{ k.telat }} hari</span>
-                <span class="muted"><span v-if="k.deadline">{{ tglDl(k.deadline) }} &middot; </span>{{ k.antre === 'proses' ? 'Menyimpan di latar belakang...' : k.antre === 'gagal' ? 'Belum tersimpan' : k.tugas.length ? k.selesaiN + ' dari ' + k.tugas.length + ' tugas' : (k.selesai ? 'Selesai' + (k.oleh ? ' oleh ' + k.oleh : '') + (k.tgl ? ' \u00b7 ' + tglJam(k.tgl) : '') : 'Ketuk bulatan untuk menandai selesai') }}</span>
+                <span class="muted"><b class="dldate" v-if="k.deadline">{{ tglDl(k.deadline) }}</b><template v-if="ketKeg(k)"><template v-if="k.deadline"> &middot; </template>{{ ketKeg(k) }}</template></span>
               </div>
             </div>
             <ikon-awan v-if="k.antre" :s="k.antre"></ikon-awan>
@@ -731,7 +732,7 @@
               <div class="kmeta">
                 <span class="dlchip">{{ k.v.label }}</span>
                 <span class="telat" v-if="k.selesai && k.telat > 0">Selesai terlambat {{ k.telat }} hari</span>
-                <span class="muted"><span v-if="k.deadline">{{ tglDl(k.deadline) }} &middot; </span>{{ k.antre === 'proses' ? 'Menyimpan di latar belakang...' : k.antre === 'gagal' ? 'Belum tersimpan' : k.tugas.length ? k.selesaiN + ' dari ' + k.tugas.length + ' tugas' : (k.selesai ? 'Selesai' + (k.tgl ? ' \u00b7 ' + tglJam(k.tgl) : '') : 'Ketuk bulatan untuk menandai selesai') }}</span>
+                <span class="muted"><b class="dldate" v-if="k.deadline">{{ tglDl(k.deadline) }}</b><template v-if="ketKeg(k)"><template v-if="k.deadline"> &middot; </template>{{ ketKeg(k) }}</template></span>
               </div>
             </div>
             <ikon-awan v-if="k.antre" :s="k.antre"></ikon-awan>
@@ -2398,6 +2399,9 @@ new Vue({
     },
     salinLink: function (l) { this.salin(l.judul + '\n' + l.url, 'lnk:' + l.id); },
 
+    ketKeg: function (k) {
+      return k.antre === 'proses' ? 'Menyimpan di latar belakang...' : k.antre === 'gagal' ? 'Belum tersimpan' : k.tugas.length ? k.selesaiN + ' dari ' + k.tugas.length + ' tugas' : (k.selesai ? 'Selesai' + (k.oleh ? ' oleh ' + k.oleh : '') + (k.tgl ? ' \u00b7 ' + this.tglJam(k.tgl) : '') : '');
+    },
     tglDl: function (dl) {
       var p = dl.split('-');
       return new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
