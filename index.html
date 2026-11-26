@@ -461,7 +461,7 @@
         </div>
         <div class="demobox">
           <b>Ingin mencoba dulu?</b>
-          <span>Buka mode demo dengan data contoh. Gratis, tanpa daftar.</span>
+          <span>Buka mode demo dengan data contoh. Gratis, tanpa daftar. <small style="opacity:.7">(Kunjungan demo dicatat secara anonim.)</small></span>
           <button class="btn block ghostdemo" :disabled="loading" @click="coba">Coba Demo</button>
         </div>
       </template>
@@ -1155,7 +1155,7 @@
       <div class="err" v-if="docForm.error">{{ docForm.error }}</div>
       <div class="row">
         <button class="btn ghost" @click="docForm.open=false">Batal</button>
-        <button class="btn" @click="simpanDocForm">Simpan</button>
+        <button class="btn" @click="simpanDocForm" :disabled="docForm.busy">{{ docForm.busy ? 'Menyimpan...' : 'Simpan' }}</button>
       </div>
     </div>
   </div>
@@ -1434,8 +1434,8 @@ function demoEngine(req) {
     case 'linkHapus': i = demoCari(db.links, req.linkId); if (i > -1) db.links.splice(i, 1); return ok;
     case 'linkKlik': Object.keys(req.hitung || {}).forEach(function (id) { var n = demoCari(db.links, id); if (n > -1) db.links[n].klik += Number(req.hitung[id]) || 0; }); return ok;
     case 'docSimpan':
-      k = req.doc || {}; i = demoCari(db.docs, k.id);
-      if (i < 0) db.docs.unshift({ id: demoId('d'), nama: k.nama, kategori: k.kategori || '', keterangan: k.keterangan || '', wajib: !!k.wajib, files: [] });
+      k = req.doc || {}; i = demoCari(db.docs, k.id || k.idBaru);
+      if (i < 0) db.docs.unshift({ id: k.idBaru || demoId('d'), nama: k.nama, kategori: k.kategori || '', keterangan: k.keterangan || '', wajib: !!k.wajib, files: [] });
       else { db.docs[i].nama = k.nama; db.docs[i].kategori = k.kategori || ''; db.docs[i].keterangan = k.keterangan || ''; db.docs[i].wajib = !!k.wajib; }
       catat('Dokumen', 'Simpan dokumen', k.nama); return ok;
     case 'docHapus': i = demoCari(db.docs, req.docId); if (i > -1) { catat('Dokumen', 'Hapus dokumen', db.docs[i].nama); db.docs.splice(i, 1); } return ok;
@@ -1715,8 +1715,8 @@ new Vue({
       q: '', kategori: '', status: 'semua', toast: '', toastTipe: '', toastTimer: null, bukaId: '', menuOpen: false, anim: true, salinId: '', salinTimer: null, kegView: prefTersimpan('dp_keg_view', ['daftar', 'kalender'], 'daftar'), privView: prefTersimpan('dp_priv_view', ['daftar', 'kalender'], 'daftar'), kegHari: '', privHari: '', kegFull: false, privFull: false, kegModal: false, privModal: false, bgJalan: 0, gantiPw: { open: false, wajib: false, lama: '', baru: '', ulang: '', lihat: false, error: '', busy: false }, resetPw: { open: false, u: null, pw: '', error: '', busy: false }, fontPx: 15, priv: [], privAntre: [], bukaPriv: '', privTugasInput: '', editPT: { id: '', judul: '' }, qPriv: '', privFilter: 'semua', halPriv: 1, perPriv: ukuranTersimpan('dp_per_priv'), privForm: { open: false, busy: false, id: null, nama: '', keterangan: '', deadline: '', tugas: '', error: '' }, rekapOpen: false, links: [], qLink: '', linkView: prefTersimpan('dp_link_view', ['grid', 'list'], 'grid'), linkUrut: prefTersimpan('dp_link_urut', ['populer', 'nama', 'nama-desc', 'terbaru'], 'populer'), klikBuf: {}, klikTimer: null, halLink: 1, perLink: ukuranTersimpan('dp_per_link'), linkForm: { open: false, busy: false, id: null, judul: '', url: '', keterangan: '', error: '' }, lihatPw: false, lupa: { open: false, email: '', busy: false, error: '', pesan: '' }, kegAntre: [], hal: 1, perHal: ukuranTersimpan('dp_per_dok'), halKeg: 1, perKeg: ukuranTersimpan('dp_per_keg'), qKeg: '', antrean: [], aktifKirim: 0, segarTimer: null, antreTimer: null, peringatIdb: false,
       pv: { open: false, loading: false, error: '', url: '', jenis: '', nama: '', file: '' },
       up: { open: false, doc: null, nama: '', items: [], busy: false, progress: 0, ke: 0, error: '' },
-      docForm: { open: false, id: null, nama: '', kategori: '', keterangan: '', wajib: true, error: '' },
-      userForm: { nama: '', username: '', password: '', role: 'anggota', error: '' },
+      docForm: { open: false, busy: false, idBaru: '', id: null, nama: '', kategori: '', keterangan: '', wajib: true, error: '' },
+      userForm: { busy: false, nama: '', username: '', password: '', role: 'anggota', error: '' },
       logData: { log: [], total: 0, hitung: {}, pengguna: [], maks: 0 }, logJenis: '', logUser: '', logBatas: 200, logBusy: false, logErr: '', logJenisList: ['Login', 'Dokumen', 'Deadline', 'Link', 'Pengguna', 'Pengaturan'],
       set: { nama: '', requireLogin: false, maksMB: 10, error: '' }, folderBaru: '', folderErr: '', folderBusy: false,
       konfirm: { open: false, judul: '', teks: '', tombol: '', fn: null }
@@ -1960,7 +1960,7 @@ new Vue({
     var dariUrl = '';
     try { dariUrl = (new URLSearchParams(location.search).get('id') || '').toUpperCase(); } catch (e) {}
     var saved = dariUrl || this.ls('get', 'dp_idapp');
-    if (saved) { this.idInput = saved; this.masuk(); }
+    if (saved) { this.idInput = saved; this.masuk(true); }
   },
   methods: {
     ls: function (op, key, val) {
@@ -2011,9 +2011,10 @@ new Vue({
     },
 
     /* ---------- masuk, login, sesi ---------- */
-    masuk: function () {
+    masuk: function (tanda) {
       var self = this, id = (this.idInput || '').trim().toUpperCase();
       if (!id) return;
+      if (id === DEMO_ID && tanda !== 1 && tanda !== true) this.catatDemo('buka_demo');
       this.loading = true; this.error = '';
       http(MASTER_URL, { action: 'getTenant', id: id }, 30000).then(function (r) {
         self.loading = false;
@@ -2032,8 +2033,18 @@ new Vue({
         self.muatDokumen();
       }).catch(function (e) { self.loading = false; self.error = self.pesanGalat(e); });
     },
+    catatDemo: function (ev) {           // catat pengunjung demo ke Master (anonim, tanpa menunggu hasil)
+      try {
+        var vid = this.ls('get', 'dp_vid');
+        if (!vid) { vid = Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-4); this.ls('set', 'dp_vid', vid); }
+        var ref = ''; try { ref = document.referrer ? new URL(document.referrer).host : ''; } catch (e) {}
+        http(MASTER_URL, { action: 'demoCatat', vid: vid, ev: ev, perangkat: /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) ? 'Mobile' : 'Desktop',
+          bahasa: navigator.language || '', zona: (Intl.DateTimeFormat().resolvedOptions() || {}).timeZone || '', layar: screen.width + 'x' + screen.height,
+          perujuk: ref, browser: navigator.userAgent.slice(0, 120) }, 15000).catch(function () {});
+      } catch (e) {}
+    },
     keluarDemo: function () { this.ls('del', 'dp_sess_DEMO'); this.gantiId(); },
-    coba: function () { this.idInput = 'DEMO'; this.masuk(); },
+    coba: function () { this.idInput = 'DEMO'; this.catatDemo('klik_coba'); this.masuk(1); },
     simpanSesi: function () {
       if (!this.tenant) return;
       if (this.token && this.user) this.ls('set', 'dp_sess_' + this.tenant.id, JSON.stringify({ token: this.token, user: { username: this.user.username, nama: this.user.nama, role: this.user.role } }));
@@ -2051,6 +2062,7 @@ new Vue({
         self.loading = false;
         if (!res.ok) { self.error = res.error; self.password = ''; return; }
         self.user = res.user; self.simpanSesi();
+        if (self.tenant.id === DEMO_ID) self.catatDemo('login_demo');
         var pwAwal = self.password;
         self.username = ''; self.password = ''; self.tab = 'kegiatan';
         if (res.wajibGanti) { self.bukaGantiPw(true, pwAwal); return; }       // login pertama / setelah reset: wajib ganti password dulu
@@ -2173,7 +2185,7 @@ new Vue({
         this.set = { nama: x.nama, requireLogin: !!x.requireLogin, maksMB: x.maksMB || 10, error: '' };
       }
       if (t === 'log') { this.logJenis = ''; this.logUser = ''; this.logBatas = 200; this.muatLog(); }
-      if (t === 'pengguna') { this.userForm = { nama: '', username: '', password: '', role: 'anggota', error: '' }; this.muatUsers(); }
+      if (t === 'pengguna') { this.userForm = { busy: false, nama: '', username: '', password: '', role: 'anggota', error: '' }; this.muatUsers(); }
     },
 
     /* ---------- pengaturan (admin) ---------- */
@@ -2201,16 +2213,20 @@ new Vue({
     /* ---------- dokumen (admin) ---------- */
     bukaDocForm: function (d) {
       this.docForm = d
-        ? { open: true, id: d.id, nama: d.nama, kategori: d.kategori, keterangan: d.keterangan || '', wajib: !!d.wajib, error: '' }
-        : { open: true, id: null, nama: '', kategori: '', keterangan: '', wajib: true, error: '' };
+        ? { open: true, busy: false, idBaru: '', id: d.id, nama: d.nama, kategori: d.kategori, keterangan: d.keterangan || '', wajib: !!d.wajib, error: '' }
+        : { open: true, busy: false, idBaru: '', id: null, nama: '', kategori: '', keterangan: '', wajib: true, error: '' };
     },
     simpanDocForm: function () {
       var f = this.docForm, self = this;
+      if (f.busy || !f.open) return;
       if (!f.nama) { f.error = 'Nama dokumen wajib diisi.'; return; }
-      this.engine({ action: 'docSimpan', doc: { id: f.id, nama: f.nama, kategori: f.kategori, keterangan: f.keterangan, wajib: f.wajib } }).then(function (res) {
+      if (!f.id && !f.idBaru) f.idBaru = 'D' + (Math.random().toString(36).slice(2, 12) + Date.now().toString(36)).replace(/[^a-z0-9]/g, '').slice(0, 16);   // sama untuk percobaan ulang: server tidak menggandakan
+      f.error = ''; this.docForm = Object.assign({}, f, { busy: true }); f = this.docForm;
+      this.engine({ action: 'docSimpan', doc: { id: f.id, idBaru: f.idBaru, nama: f.nama, kategori: f.kategori, keterangan: f.keterangan, wajib: f.wajib } }).then(function (res) {
+        f.busy = false;
         if (!res.ok) { f.error = res.error; return; }
         f.open = false; self.tampilToast('Dokumen disimpan.'); self.segarkan();
-      }).catch(function (e) { f.error = self.pesanGalat(e); });
+      }).catch(function (e) { f.busy = false; f.error = self.pesanGalat(e); });
     },
     tanyaHapusDoc: function (d) {
       var self = this;
@@ -2257,15 +2273,18 @@ new Vue({
     },
     tambahUser: function () {
       var f = this.userForm, self = this;
+      if (f.busy) return;
       f.error = '';
       if (!f.nama) { f.error = 'Nama wajib diisi.'; return; }
       if (!/^([a-z0-9._-]{3,30}|[a-z0-9._%+-]{1,64}@[a-z0-9.-]{1,63}\.[a-z]{2,})$/.test((f.username || '').toLowerCase())) { f.error = 'Isi username (3-30 karakter: huruf, angka, titik, strip, garis bawah) atau alamat email.'; return; }
       if (f.password.length < 6) { f.error = 'Password minimal 6 karakter.'; return; }
+      f.busy = true;
       this.engine({ action: 'userTambah', nama: f.nama, username: f.username, password: f.password, role: f.role }).then(function (res) {
+        f.busy = false;
         if (!res.ok) { f.error = res.error; return; }
-        self.userForm = { nama: '', username: '', password: '', role: 'anggota', error: '' };
+        self.userForm = { busy: false, nama: '', username: '', password: '', role: 'anggota', error: '' };
         self.tampilToast('Pengguna ditambahkan.'); self.muatUsers();
-      }).catch(function (e) { f.error = self.pesanGalat(e); });
+      }).catch(function (e) { f.busy = false; f.error = self.pesanGalat(e); });
     },
     ubahPeran: function (u) {
       var self = this;
@@ -2315,6 +2334,7 @@ new Vue({
     /* Menekan "Upload" hanya mengantrekan berkas; modal langsung tertutup dan pengguna bisa lanjut. */
     kirim: function () {
       var u = this.up;
+      if (!u.open || u.busy) return;                 // klik/Enter ganda: abaikan
       if (!u.nama) { u.error = 'Nama pengunggah wajib diisi.'; return; }
       if (!u.items.length) { u.error = 'Pilih minimal satu file.'; return; }
       this.ls('set', 'dp_nama', u.nama);
@@ -2593,6 +2613,7 @@ new Vue({
 
     /* ---------- rekam kegiatan di latar belakang ---------- */
     rekamKeg: function (f, tugas) {
+      if (!f.open) return;                           // sudah direkam (klik/Enter ganda)
       var id = 'K' + (Math.random().toString(36).slice(2, 12) + Date.now().toString(36)).replace(/[^a-z0-9]/g, '').slice(0, 16);
       var it = { id: id, nama: f.nama, keterangan: f.keterangan, deadline: f.deadline, tugasMentah: tugas, selesai: false, oleh: '', tgl: '', antre: 'proses', galat: '',
                  tugas: tugas.map(function (j, i) { return { id: 'tmp' + i + id, judul: j, selesai: false, oleh: '', tgl: '' }; }) };
@@ -2648,6 +2669,7 @@ new Vue({
       this.latar({ action: 'privKegSimpan', k: { id: f.id, nama: this.ac(f.nama), keterangan: this.ac(f.keterangan), deadline: this.ac(f.deadline) } }, function () { Object.assign(asli, lama); });
     },
     rekamPriv: function (f, tugas) {
+      if (!f.open) return;                           // sudah direkam (klik/Enter ganda)
       var id = 'P' + (Math.random().toString(36).slice(2, 12) + Date.now().toString(36)).replace(/[^a-z0-9]/g, '').slice(0, 16);
       var it = { id: id, nama: f.nama, keterangan: f.keterangan, deadline: f.deadline, tugasMentah: tugas, selesai: false, tgl: '', antre: 'proses', galat: '',
                  tugas: tugas.map(function (j, i) { return { id: 'tmp' + i + id, judul: j, selesai: false, tgl: '' }; }) };
@@ -2763,7 +2785,7 @@ new Vue({
     },
     simpanLinkForm: function () {
       var f = this.linkForm, self = this;
-      if (f.busy) return;
+      if (f.busy || !f.open) return;
       var url = this.normalUrl(f.url);
       if (!f.judul) { f.error = 'Judul link wajib diisi.'; return; }
       if (!url) { f.error = 'Alamat link tidak valid. Contoh: https://contoh.com'; return; }
@@ -2995,7 +3017,7 @@ new Vue({
 
     /* ---------- util ---------- */
     tanya: function (judul, teks, tombol, fn) { this.konfirm = { open: true, judul: judul, teks: teks, tombol: tombol, fn: fn }; },
-    jalankanKonfirm: function () { var fn = this.konfirm.fn; this.konfirm.open = false; if (fn) fn.call(this); },
+    jalankanKonfirm: function () { var fn = this.konfirm.fn; if (!this.konfirm.open || !fn) return; this.konfirm.open = false; this.konfirm.fn = null; fn.call(this); },
     tgl: function (s) { return s ? new Date(s).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''; },
     /* 24 Nov 2026, 14:35 (jam perangkat pengguna); data lama tanpa jam tampil tanpa jam */
     tglJam: function (s) {
