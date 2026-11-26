@@ -410,10 +410,19 @@
   .kal.full .kal-t b{white-space:normal;font-size:12px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
   .kal.full:not(.wrap) .kal-t b{-webkit-line-clamp:1;white-space:nowrap;display:block;text-overflow:ellipsis}
   @media(max-width:580px){.kal.full{padding:8px}.kal.full .kal-t b{font-size:10px;padding:1px 3px;line-height:1.2}.kal.full .kal-c{padding:3px}.kal.full .kal-n{font-size:12px}.kal-h{flex-wrap:wrap}.kal-fs{order:5}}
-  .kdaftar.hariModal{position:fixed;inset:0;z-index:55;background:rgba(15,23,42,.55);overflow:auto;padding:14px 12px 60px;animation:fade .15s ease-out}
+  .kdaftar.hariModal{position:fixed;inset:0;z-index:55;background:rgba(15,23,42,.5);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);overflow:auto;padding:5vh 12px 60px;animation:fade .18s ease-out}
   .kdaftar.hariModal>*{max-width:780px;margin-left:auto;margin-right:auto}
   .kdaftar.hariModal>.kw,.kdaftar.hariModal>.card{width:100%}
-  .kmhead{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fff;border-radius:12px;padding:10px 14px;margin-bottom:10px;position:sticky;top:0;z-index:3;box-shadow:0 2px 10px rgba(16,24,40,.15)}
+  .kmhead{display:flex;align-items:center;gap:12px;background:#fff;border-radius:16px;padding:12px 14px;margin-bottom:12px;position:sticky;top:0;z-index:3;box-shadow:0 8px 28px rgba(16,24,40,.22);animation:sheetin .28s cubic-bezier(.2,.8,.3,1)}
+  .kmtgl{flex:none;width:52px;border-radius:12px;overflow:hidden;text-align:center;border:1px solid var(--line);background:#fff}
+  .kmb{display:block;background:var(--pri);color:#fff;font-size:10px;font-weight:700;letter-spacing:.08em;padding:2px 0}
+  .kmd{display:block;font-size:22px;font-weight:800;line-height:1.25}
+  .kmt{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+  .kmt b{font-size:15px;line-height:1.25}
+  .kmt .muted{font-size:13px}
+  .kmx{width:34px;height:34px;border-radius:50%;flex:none}
+  @keyframes sheetin{from{opacity:0;transform:translateY(22px) scale(.97)}}
+  @media(max-width:580px){.kdaftar.hariModal{padding-top:7vh}.kmhead{gap:10px;padding:10px 12px}.kmt b{font-size:14px}}
   body.kalfull{overflow:hidden}
   .overlay{z-index:80}
   .toast{z-index:90}
@@ -570,11 +579,16 @@
         <div v-if="loading" class="card empty">Memuat kegiatan...</div>
         <template v-if="!loading && kegView==='kalender'">
           <kalender :items="kegKalItems" :dipilih="kegHari" :full="kegFull" @pilih="pilihHariKeg" @full="setKegFull"></kalender>
-          <div class="kal-info"><b v-if="kegHari">Kegiatan pada {{ tglDl(kegHari) }} ({{ kegDaftar.length }})</b><span v-else>Pilih tanggal untuk melihat kegiatannya.</span><span class="muted" v-if="kegTanpaTgl"> &middot; {{ kegTanpaTgl }} kegiatan tanpa deadline tidak tampil di kalender</span></div>
+          <div class="kal-info"><span class="muted">Ketuk tanggal untuk melihat kegiatannya.</span><span class="muted" v-if="kegTanpaTgl"> &middot; {{ kegTanpaTgl }} kegiatan tanpa deadline tidak tampil di kalender</span></div>
         </template>
-        <div class="kdaftar" :class="{hariModal: kegModal && kegFull}" @click.self="kegModal = false">
-        <div class="kmhead" v-if="kegModal && kegFull"><b>Kegiatan pada {{ tglDl(kegHari) }} ({{ kegDaftar.length }})</b><button class="btn ghost sm" @click="kegModal = false">&#10005; Tutup</button></div>
-        <div v-if="!loading && !kegDaftar.length && (kegView==='daftar' || kegHari)" class="card empty">
+        <div class="kdaftar" :class="{hariModal: kegModal}" @click.self="kegModal = false">
+        <div class="kmhead" v-if="kegModal">
+          <div class="kmtgl"><span class="kmd">{{ hariAngka(kegHari) }}</span><span class="kmb">{{ bulanSingkat(kegHari) }}</span></div>
+          <div class="kmt"><b>{{ hariPanjang(kegHari) }}</b><span class="muted">{{ kegDaftar.length }} kegiatan<span v-if="kegDaftar.length"> &middot; {{ belumN(kegDaftar) }} belum selesai</span><span v-if="kegHari === hariIniKey()"> &middot; Hari ini</span></span></div>
+          <button class="btn sm" v-if="bisaKelola" @click="tambahDiTanggal('keg')">+ Kegiatan</button>
+          <button class="mini kmx" @click="kegModal = false" aria-label="Tutup">&#10005;</button>
+        </div>
+        <div v-if="!loading && !kegDaftar.length && (kegView==='daftar' || kegModal)" class="card empty">
           {{ kegView==='kalender' ? 'Tidak ada kegiatan pada tanggal ini.' : (kegiatan.length ? 'Tidak ada kegiatan pada filter ini.' : (bisaKelola ? 'Belum ada kegiatan. Tekan "+ Kegiatan" untuk membuat yang pertama.' : 'Belum ada kegiatan.')) }}
         </div>
 
@@ -689,11 +703,16 @@
 
         <template v-if="privView==='kalender'">
           <kalender :items="privKalItems" :dipilih="privHari" :full="privFull" @pilih="pilihHariPriv" @full="setPrivFull"></kalender>
-          <div class="kal-info"><b v-if="privHari">Kegiatan pada {{ tglDl(privHari) }} ({{ privDaftar.length }})</b><span v-else>Pilih tanggal untuk melihat kegiatannya.</span><span class="muted" v-if="privTanpaTgl"> &middot; {{ privTanpaTgl }} kegiatan tanpa deadline tidak tampil di kalender</span></div>
+          <div class="kal-info"><span class="muted">Ketuk tanggal untuk melihat kegiatannya.</span><span class="muted" v-if="privTanpaTgl"> &middot; {{ privTanpaTgl }} kegiatan tanpa deadline tidak tampil di kalender</span></div>
         </template>
-        <div class="kdaftar" :class="{hariModal: privModal && privFull}" @click.self="privModal = false">
-        <div class="kmhead" v-if="privModal && privFull"><b>Kegiatan pada {{ tglDl(privHari) }} ({{ privDaftar.length }})</b><button class="btn ghost sm" @click="privModal = false">&#10005; Tutup</button></div>
-        <div v-if="!privDaftar.length && (privView==='daftar' || privHari)" class="card empty">
+        <div class="kdaftar" :class="{hariModal: privModal}" @click.self="privModal = false">
+        <div class="kmhead" v-if="privModal">
+          <div class="kmtgl"><span class="kmd">{{ hariAngka(privHari) }}</span><span class="kmb">{{ bulanSingkat(privHari) }}</span></div>
+          <div class="kmt"><b>{{ hariPanjang(privHari) }}</b><span class="muted">{{ privDaftar.length }} kegiatan<span v-if="privDaftar.length"> &middot; {{ belumN(privDaftar) }} belum selesai</span><span v-if="privHari === hariIniKey()"> &middot; Hari ini</span></span></div>
+          <button class="btn sm" v-if="bisaKelola" @click="tambahDiTanggal('priv')">+ Kegiatan</button>
+          <button class="mini kmx" @click="privModal = false" aria-label="Tutup">&#10005;</button>
+        </div>
+        <div v-if="!privDaftar.length && (privView==='daftar' || privModal)" class="card empty">
           {{ privView==='kalender' ? 'Tidak ada kegiatan pada tanggal ini.' : (priv.length + privAntre.length ? 'Tidak ada kegiatan pada filter ini.' : 'Belum ada deadline privat. Tekan "+ Kegiatan" untuk membuat yang pertama.') }}
         </div>
 
@@ -1699,13 +1718,13 @@ new Vue({
     kegHalAktif: function () { return Math.min(Math.max(this.halKeg, 1), this.kegTotalHal); },
     kegDaftar: function () {
       var h = this.kegHari;
-      return this.kegView === 'kalender' ? (h ? this.kegSaring.filter(function (k) { return k.deadline === h; }) : []) : this.kegTampil;
+      return this.kegView === 'kalender' ? (h && this.kegModal ? this.kegSaring.filter(function (k) { return k.deadline === h; }) : []) : this.kegTampil;
     },
     kegKalItems: function () { return this.kegSaring.filter(function (k) { return k.deadline; }).map(function (k) { return { id: k.id, nama: k.nama, deadline: k.deadline, warna: k.v.warna, latar: k.v.latar, selesai: k.selesai }; }); },
     kegTanpaTgl: function () { return this.kegSaring.filter(function (k) { return !k.deadline; }).length; },
     privDaftar: function () {
       var h = this.privHari;
-      return this.privView === 'kalender' ? (h ? this.privSaring.filter(function (k) { return k.deadline === h; }) : []) : this.privTampil;
+      return this.privView === 'kalender' ? (h && this.privModal ? this.privSaring.filter(function (k) { return k.deadline === h; }) : []) : this.privTampil;
     },
     privKalItems: function () { return this.privSaring.filter(function (k) { return k.deadline; }).map(function (k) { return { id: k.id, nama: k.nama, deadline: k.deadline, warna: k.v.warna, latar: k.v.latar, selesai: k.selesai }; }); },
     privTanpaTgl: function () { return this.privSaring.filter(function (k) { return !k.deadline; }).length; },
@@ -1776,6 +1795,8 @@ new Vue({
     if (this.ls('get', 'dp_anim') === '0') this.anim = false;
     this.terapkanAnim();
     this.$watch('tab', this.tutupKalFull);
+    var self = this;
+    this.$watch(function () { return [self.kegFull, self.privFull, self.kegModal, self.privModal].join(); }, this.kunciLayar);
     hidupkan();
     document.addEventListener('keydown', this.tekanKey);
     document.addEventListener('click', function () { selfM.menuOpen = false; });
@@ -2317,14 +2338,22 @@ new Vue({
     setKegView: function (v) { if (v !== 'kalender') { this.kegFull = false; this.kegModal = false; this.kunciLayar(); } this.kegView = v; this.ls('set', 'dp_keg_view', v); if (v === 'kalender' && !this.kegHari) this.kegHari = this.hariIniKey(); },
     setPrivView: function (v) { if (v !== 'kalender') { this.privFull = false; this.privModal = false; this.kunciLayar(); } this.privView = v; this.ls('set', 'dp_priv_view', v); if (v === 'kalender' && !this.privHari) this.privHari = this.hariIniKey(); },
     pilihHariKeg: function (k) {
-      if (this.kegFull) { this.kegHari = k; this.kegModal = true; } else this.kegHari = this.kegHari === k ? '' : k;
+      this.kegHari = k; this.kegModal = true;
       this.bukaKeg = '';
     },
     pilihHariPriv: function (k) {
-      if (this.privFull) { this.privHari = k; this.privModal = true; } else this.privHari = this.privHari === k ? '' : k;
+      this.privHari = k; this.privModal = true;
       this.bukaPriv = '';
     },
-    kunciLayar: function () { document.body.classList.toggle('kalfull', !!(this.kegFull || this.privFull)); },
+    kunciLayar: function () { document.body.classList.toggle('kalfull', !!(this.kegFull || this.privFull || this.kegModal || this.privModal)); },
+    hariAngka: function (k) { return k ? Number(String(k).split('-')[2]) : ''; },
+    bulanSingkat: function (k) { var p = String(k || '').split('-'); return p.length < 3 ? '' : new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString('id-ID', { month: 'short' }).toUpperCase(); },
+    hariPanjang: function (k) { var p = String(k || '').split('-'); return p.length < 3 ? '' : new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); },
+    belumN: function (list) { return list.filter(function (k) { return !k.selesai; }).length; },
+    tambahDiTanggal: function (jenis) {
+      if (jenis === 'priv') { this.bukaPrivForm(null); this.privForm.deadline = this.privHari; }
+      else { this.bukaKegForm(null); this.kegForm.deadline = this.kegHari; }
+    },
     setKegFull: function () { this.kegFull = !this.kegFull; this.kegModal = false; this.bukaKeg = ''; this.kunciLayar(); },
     setPrivFull: function () { this.privFull = !this.privFull; this.privModal = false; this.bukaPriv = ''; this.kunciLayar(); },
     tutupKalFull: function () { this.kegFull = this.privFull = this.kegModal = this.privModal = false; this.kunciLayar(); },
