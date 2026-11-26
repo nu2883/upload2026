@@ -432,6 +432,10 @@
   @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important}}
   .tanim{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;font-size:14px;color:var(--text)}
   .tanim input{width:18px;height:18px}
+.demobox{margin-top:16px;padding:14px 16px;border:1.5px dashed #6366f1;border-radius:14px;background:#eef2ff;display:flex;flex-direction:column;gap:6px;font-size:.92rem;color:#1e293b}
+.demobox b{color:#3730a3}.demobox code{background:#fff;border:1px solid #c7d2fe;border-radius:6px;padding:1px 8px;font-weight:700}
+.ghostdemo{background:#fff!important;color:#3730a3!important;border:1.5px solid #6366f1!important;margin-top:6px}
+.demobar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 12px;padding:10px 14px;border-radius:12px;background:#fef3c7;color:#78350f;font-size:.9rem;border:1px solid #fcd34d}
 </style>
 </head>
 <body>
@@ -454,6 +458,11 @@
         <div class="alt">
           <button class="linkbtn" @click="lupa.open=true; lupa.error=''; lupa.pesan=''">Lupa ID_APP?</button>
           <a :href="registrasiUrl" v-if="registrasiUrl">Daftar sebagai admin</a>
+        </div>
+        <div class="demobox">
+          <b>Ingin mencoba dulu?</b>
+          <span>Buka mode demo dengan data contoh. Gratis, tanpa daftar.</span>
+          <button class="btn block ghostdemo" :disabled="loading" @click="coba">Coba Demo</button>
         </div>
       </template>
 
@@ -485,6 +494,11 @@
         <button type="button" class="pwtoggle" @click="lihatPw=!lihatPw">{{ lihatPw ? 'Sembunyikan' : 'Lihat' }}</button>
       </div>
       <div class="notice bad" v-if="error">{{ error }}</div>
+      <div class="demobox" v-if="tenant.id==='DEMO'">
+        <b>Akun demo</b>
+        <span>Username: <code>demo</code> &nbsp; Password: <code>demo</code></span>
+        <button type="button" class="btn block ghostdemo" @click="username='demo'; password='demo'; login()">Masuk sebagai demo</button>
+      </div>
       <button class="btn block" :disabled="loading||!username||!password" @click="login">{{ loading ? 'Memeriksa...' : 'Masuk' }}</button>
       <div class="alt" style="justify-content:center">
         <button class="linkbtn" v-if="!tenant.requireLogin" @click="batalLoginAdmin">&larr; Kembali ke daftar dokumen</button>
@@ -495,6 +509,7 @@
 
   <!-- ============ TAMPILAN UTAMA ============ -->
   <div class="wrap" v-else>
+    <div class="demobar" v-if="tenant && tenant.id==='DEMO'"><span><b>Mode demo</b> · data contoh, tidak tersimpan. Muat ulang untuk mengulang.</span><button class="linkbtn" @click="keluarDemo">Keluar dari demo</button></div>
     <header class="top">
       <div>
         <h1>{{ tenant.nama }}</h1>
@@ -1315,7 +1330,144 @@ var MASTER_URL = 'https://script.google.com/macros/s/AKfycbyaxbTZzDOiwJt5DvQg_p6
 var REGISTRASI_URL = 'registerAdmin.html';
 
 /* Pemanggil Apps Script. Body teks biasa (tanpa header khusus) agar tidak ada preflight CORS. */
+/* ============================================================
+   MODE DEMO (tanpa server)
+   ID_APP "DEMO" + akun demo / demo berjalan sepenuhnya di browser dengan data contoh.
+   Tidak ada yang dikirim atau disimpan ke Google Sheets/Drive; muat ulang halaman = data kembali awal.
+   ============================================================ */
+var DEMO_ID = 'DEMO', DEMO_URL = 'demo://engine', DEMO_TOKEN = 'demo-token';
+var demoDB = null, demoSeq = 0;
+function demoIso(h, jam, mnt) { var d = new Date(Date.now() + h * 864e5); d.setHours(jam || 9, mnt || 0, 0, 0); return d.toISOString(); }
+function demoTgl(h) { var d = new Date(Date.now() + h * 864e5), p = function (n) { return (n < 10 ? '0' : '') + n; }; return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()); }
+function demoId(p) { return p + (++demoSeq) + Math.random().toString(36).slice(2, 6); }
+function demoBangun() {
+  var T = function (judul, oleh, h, j, m) { return { id: demoId('t'), judul: judul, selesai: !!oleh, oleh: oleh || '', tgl: oleh ? demoIso(h, j, m) : '' }; };
+  var F = function (nama, cap, peng, h, uk) { return { id: demoId('f'), namaFile: nama, caption: cap, pengunggah: peng, tgl: demoIso(h, 10, 30), ukuran: uk }; };
+  var Pt = function (judul, sel, h) { return { id: demoId('pt'), judul: judul, selesai: sel ? '1' : '', tgl: sel ? demoIso(h, 19, 10) : '' }; };
+  var user = function (u, n, r, utama) { return { username: u, nama: n, role: r, utama: !!utama, menunggu: false }; };
+  var log = function (m, u, n, j, a, d, ok) { var x = new Date(Date.now() - m * 6e4), p = function (v) { return (v < 10 ? '0' : '') + v; };
+    return { w: x.getFullYear() + '-' + p(x.getMonth() + 1) + '-' + p(x.getDate()) + ' ' + p(x.getHours()) + ':' + p(x.getMinutes()) + ':' + p(x.getSeconds()), u: u, n: n, j: j, a: a, d: d, h: ok || 'Berhasil' }; };
+  return {
+    nama: 'Demo · Bagian Keuangan',
+    users: [user('demo', 'Pengguna Demo', 'admin', true), user('sari', 'Sari Dewi', 'admin'), user('budi', 'Budi Santoso', 'anggota'), user('rina', 'Rina Marlina', 'anggota')],
+    kegiatan: [
+      { id: demoId('k'), nama: 'Laporan Keuangan Triwulan IV', keterangan: '', deadline: demoTgl(1), selesai: false, oleh: '', tgl: '', tugas: [T('Rekap transaksi', 'Sari Dewi', -2, 14, 35), T('Verifikasi bukti pendukung', 'Budi Santoso', -1, 10, 12), T('Review oleh pimpinan'), T('Unggah laporan final')] },
+      { id: demoId('k'), nama: 'Rapat Koordinasi Tahunan', keterangan: '', deadline: demoTgl(-2), selesai: false, oleh: '', tgl: '', tugas: [T('Susun undangan', 'Rina Marlina', -4, 9, 5), T('Siapkan materi presentasi'), T('Notulen rapat')] },
+      { id: demoId('k'), nama: 'Pengadaan ATK 2027', keterangan: '', deadline: demoTgl(3), selesai: false, oleh: '', tgl: '', tugas: [T('Kumpulkan usulan unit', 'Budi Santoso', -3, 16, 40), T('Bandingkan harga vendor'), T('Persetujuan anggaran')] },
+      { id: demoId('k'), nama: 'Pelatihan Pegawai Baru', keterangan: '', deadline: demoTgl(3), selesai: false, oleh: '', tgl: '', tugas: [T('Jadwal & ruangan'), T('Modul pelatihan')] },
+      { id: demoId('k'), nama: 'Audit Internal Semester II', keterangan: '', deadline: demoTgl(9), selesai: false, oleh: '', tgl: '', tugas: [T('Siapkan dokumen pendukung', 'Sari Dewi', -1, 13, 20), T('Wawancara auditor', 'Sari Dewi', 0, 8, 50), T('Tindak lanjut temuan'), T('Laporan hasil')] },
+      { id: demoId('k'), nama: 'Evaluasi Kinerja Semester', keterangan: '', deadline: demoTgl(12), selesai: false, oleh: '', tgl: '', tugas: [T('Isi formulir penilaian'), T('Diskusi 1:1')] },
+      { id: demoId('k'), nama: 'Arsip Dokumen Tahunan', keterangan: '', deadline: demoTgl(20), selesai: false, oleh: '', tgl: '', tugas: [] },
+      { id: demoId('k'), nama: 'Kick-off Proyek Digitalisasi', keterangan: '', deadline: demoTgl(-1), selesai: true, oleh: 'Rina Marlina', tgl: demoIso(-2, 15, 30), tugas: [T('Susun timeline', 'Rina Marlina', -4, 11, 0), T('Tentukan PIC', 'Budi Santoso', -3, 9, 45), T('Presentasi kick-off', 'Rina Marlina', -2, 15, 30)] }
+    ],
+    priv: [
+      { id: demoId('p'), nama: 'Tagihan listrik & internet', keterangan: '', deadline: demoTgl(2), selesai: '', tgl: '', tugas: [Pt('Bayar listrik', 1, -1), Pt('Bayar internet', 0)] },
+      { id: demoId('p'), nama: 'Belajar Excel tingkat lanjut', keterangan: '', deadline: demoTgl(14), selesai: '', tgl: '', tugas: [Pt('Selesaikan modul PivotTable', 1, -3), Pt('Latihan XLOOKUP', 0), Pt('Ujian akhir', 0)] },
+      { id: demoId('p'), nama: 'Daftar belanja akhir tahun', keterangan: '', deadline: demoTgl(6), selesai: '', tgl: '', tugas: [] }
+    ],
+    docs: [
+      { id: demoId('d'), nama: 'KTP Pegawai', kategori: 'Identitas', keterangan: 'Scan berwarna, jelas terbaca', wajib: true, files: [F('ktp-sari.pdf', '', 'Sari Dewi', -3, 812345), F('ktp-budi.jpg', 'KTP Budi', 'Budi Santoso', -2, 1450000)] },
+      { id: demoId('d'), nama: 'NPWP', kategori: 'Identitas', keterangan: '', wajib: true, files: [F('npwp.pdf', '', 'Rina Marlina', -1, 402000)] },
+      { id: demoId('d'), nama: 'SK Pengangkatan', kategori: 'Kepegawaian', keterangan: '', wajib: true, files: [F('sk-pengangkatan.pdf', '', 'Sari Dewi', -5, 2300000)] },
+      { id: demoId('d'), nama: 'Ijazah Terakhir', kategori: 'Pendidikan', keterangan: 'Coba unggah berkas di sini', wajib: true, files: [] },
+      { id: demoId('d'), nama: 'Sertifikat Pelatihan', kategori: 'Pendidikan', keterangan: 'Boleh lebih dari satu berkas', wajib: false, files: [F('sertifikat-excel.pdf', 'Sertifikat Excel', 'Budi Santoso', -4, 950000)] }
+    ].reverse(),
+    links: [['SIMAK BMN', 'https://simak.contoh.go.id', 42], ['Portal Pegawai', 'https://pegawai.contoh.go.id', 37], ['Aplikasi Kas Digital', 'https://kas.contoh.go.id', 29], ['Google Drive Bersama', 'https://drive.google.com', 24], ['Kalender Kerja 2027', 'https://kalender.contoh.go.id', 17], ['Panduan & SOP', 'https://sop.contoh.go.id', 11]].map(function (x) { return { id: demoId('l'), judul: x[0], url: x[1], keterangan: '', klik: x[2] }; }).reverse(),
+    log: [log(5, 'sari', 'Sari Dewi', 'Dokumen', 'Unggah berkas', 'ktp-sari.pdf → KTP Pegawai'), log(30, 'budi', 'Budi Santoso', 'Deadline', 'Tugas selesai', 'Kumpulkan usulan unit (Pengadaan ATK 2027)'), log(95, 'rina', 'Rina Marlina', 'Login', 'Login', ''),
+          log(130, 'sari', 'Sari Dewi', 'Login', 'Login gagal', '', 'Gagal: password salah'), log(1500, 'rina', 'Rina Marlina', 'Link', 'Simpan link', 'Kalender Kerja 2027'), log(1560, 'budi', 'Budi Santoso', 'Deadline', 'Simpan kegiatan', 'Evaluasi Kinerja Semester'), log(2900, 'demo', 'Pengguna Demo', 'Pengaturan', 'Hubungkan folder Drive', '')],
+    pengaturan: { requireLogin: true, maksMB: 10 }
+  };
+}
+function demoCari(arr, id) { for (var i = 0; i < arr.length; i++) if (arr[i].id === id) return i; return -1; }
+function demoTugas(list, id) { for (var i = 0; i < list.length; i++) { var j = demoCari(list[i].tugas, id); if (j > -1) return { k: list[i], i: j }; } return null; }
+function demoSalin(x) { return JSON.parse(JSON.stringify(x)); }
+function demoEngine(req) {
+  var db = demoDB || (demoDB = demoBangun()), a = req.action, me = { username: 'demo', nama: 'Pengguna Demo', role: 'admin', utama: true };
+  var catat = function (j, aksi, d) { var x = new Date(), p = function (v) { return (v < 10 ? '0' : '') + v; };
+    db.log.unshift({ w: x.getFullYear() + '-' + p(x.getMonth() + 1) + '-' + p(x.getDate()) + ' ' + p(x.getHours()) + ':' + p(x.getMinutes()) + ':' + p(x.getSeconds()), u: 'demo', n: 'Pengguna Demo', j: j, a: aksi, d: d || '', h: 'Berhasil' }); };
+  if (a === 'getTenant') return { ok: true, tenant: { id: DEMO_ID, nama: db.nama, requireLogin: true }, engine: { url: DEMO_URL, no: 0 } };
+  if (a === 'login') {
+    if (String(req.username || '').trim().toLowerCase() === 'demo' && req.password === 'demo') { catat('Login', 'Login', ''); return { ok: true, token: DEMO_TOKEN, user: me }; }
+    return { ok: false, error: 'Akun demo: username "demo" dan password "demo".' };
+  }
+  if (req.token !== DEMO_TOKEN) return { ok: false, kode: 'LOGIN', error: 'Sesi berakhir. Silakan login lagi.' };
+  var i, k, ok = { ok: true };
+  switch (a) {
+    case 'getData':
+      return { ok: true, tenant: { id: DEMO_ID, nama: db.nama, requireLogin: db.pengaturan.requireLogin, maksMB: db.pengaturan.maksMB, folderSiap: true, folderUrl: 'https://drive.google.com/', engineEmail: 'engine-demo@contoh.com' }, user: me,
+               kegiatan: demoSalin(db.kegiatan), priv: demoSalin(db.priv), docs: demoSalin(db.docs), links: demoSalin(db.links) };
+    case 'kegiatanCentang': i = demoCari(db.kegiatan, req.kegiatanId); if (i < 0) return { ok: false, error: 'Kegiatan tidak ditemukan.' };
+      k = db.kegiatan[i]; k.selesai = !!req.selesai; k.oleh = k.selesai ? (req.nama || 'Anonim') : ''; k.tgl = k.selesai ? new Date().toISOString() : '';
+      catat('Deadline', k.selesai ? 'Kegiatan selesai' : 'Kegiatan dibuka lagi', k.nama); return { ok: true, oleh: k.oleh, tgl: k.tgl };
+    case 'taskCentang': var h = demoTugas(db.kegiatan, req.taskId); if (!h) return { ok: false, error: 'Tugas tidak ditemukan.' };
+      k = h.k.tugas[h.i]; k.selesai = !!req.selesai; k.oleh = k.selesai ? (req.nama || 'Anonim') : ''; k.tgl = k.selesai ? new Date().toISOString() : '';
+      catat('Deadline', k.selesai ? 'Tugas selesai' : 'Tugas dibuka lagi', k.judul + ' (' + h.k.nama + ')'); return { ok: true, oleh: k.oleh, tgl: k.tgl };
+    case 'kegiatanSimpan':
+      k = req.k || {}; i = demoCari(db.kegiatan, k.id || k.idBaru);
+      if (i < 0) { db.kegiatan.push({ id: k.idBaru || demoId('k'), nama: k.nama, keterangan: k.keterangan || '', deadline: k.deadline || '', selesai: false, oleh: '', tgl: '', tugas: (k.tugas || []).map(function (j) { return { id: demoId('t'), judul: j, selesai: false, oleh: '', tgl: '' }; }) }); }
+      else { db.kegiatan[i].nama = k.nama; db.kegiatan[i].keterangan = k.keterangan || ''; db.kegiatan[i].deadline = k.deadline || ''; }
+      catat('Deadline', 'Simpan kegiatan', k.nama); return ok;
+    case 'kegiatanHapus': i = demoCari(db.kegiatan, req.kegiatanId); if (i > -1) { catat('Deadline', 'Hapus kegiatan', db.kegiatan[i].nama); db.kegiatan.splice(i, 1); } return ok;
+    case 'taskSimpan':
+      if (req.taskId) { var h2 = demoTugas(db.kegiatan, req.taskId); if (h2) h2.k.tugas[h2.i].judul = req.judul; }
+      else { i = demoCari(db.kegiatan, req.kegiatanId); if (i > -1) (req.daftar || []).forEach(function (j) { db.kegiatan[i].tugas.push({ id: demoId('t'), judul: j, selesai: false, oleh: '', tgl: '' }); }); }
+      return ok;
+    case 'taskHapus': var h3 = demoTugas(db.kegiatan, req.taskId); if (h3) h3.k.tugas.splice(h3.i, 1); return ok;
+    case 'privKegSimpan':
+      k = req.k || {}; i = demoCari(db.priv, k.id || k.idBaru);
+      if (i < 0) db.priv.push({ id: k.idBaru || demoId('p'), nama: k.nama, keterangan: k.keterangan || '', deadline: k.deadline || '', selesai: '', tgl: '', tugas: (k.tugas || []).map(function (j) { return { id: demoId('pt'), judul: j, selesai: '', tgl: '' }; }) });
+      else { db.priv[i].nama = k.nama; db.priv[i].keterangan = k.keterangan || ''; db.priv[i].deadline = k.deadline || ''; }
+      return ok;
+    case 'privKegHapus': i = demoCari(db.priv, req.privId); if (i > -1) db.priv.splice(i, 1); return ok;
+    case 'privKegCentang': i = demoCari(db.priv, req.privId); if (i > -1) { db.priv[i].selesai = req.sel || ''; db.priv[i].tgl = req.tglSel || ''; } return ok;
+    case 'privTugasCentang': var p1 = demoTugas(db.priv, req.tugasId); if (p1) { p1.k.tugas[p1.i].selesai = req.sel || ''; p1.k.tugas[p1.i].tgl = req.tglSel || ''; } return ok;
+    case 'privTugasSimpan':
+      if (req.tugasId) { var p2 = demoTugas(db.priv, req.tugasId); if (p2) p2.k.tugas[p2.i].judul = req.judul; }
+      else { i = demoCari(db.priv, req.privId); if (i > -1) (req.daftar || []).forEach(function (j) { db.priv[i].tugas.push({ id: demoId('pt'), judul: j, selesai: '', tgl: '' }); }); }
+      return ok;
+    case 'privTugasHapus': var p3 = demoTugas(db.priv, req.tugasId); if (p3) p3.k.tugas.splice(p3.i, 1); return ok;
+    case 'linkSimpan':
+      k = req.l || {}; i = demoCari(db.links, k.id || k.idBaru);
+      if (i < 0) { db.links.unshift({ id: k.idBaru || demoId('l'), judul: k.judul, url: k.url, keterangan: k.keterangan || '', klik: 0 }); catat('Link', 'Simpan link', k.judul); }
+      else { db.links[i].judul = k.judul; db.links[i].url = k.url; db.links[i].keterangan = k.keterangan || ''; }
+      return ok;
+    case 'linkHapus': i = demoCari(db.links, req.linkId); if (i > -1) db.links.splice(i, 1); return ok;
+    case 'linkKlik': Object.keys(req.hitung || {}).forEach(function (id) { var n = demoCari(db.links, id); if (n > -1) db.links[n].klik += Number(req.hitung[id]) || 0; }); return ok;
+    case 'docSimpan':
+      k = req.doc || {}; i = demoCari(db.docs, k.id);
+      if (i < 0) db.docs.unshift({ id: demoId('d'), nama: k.nama, kategori: k.kategori || '', keterangan: k.keterangan || '', wajib: !!k.wajib, files: [] });
+      else { db.docs[i].nama = k.nama; db.docs[i].kategori = k.kategori || ''; db.docs[i].keterangan = k.keterangan || ''; db.docs[i].wajib = !!k.wajib; }
+      catat('Dokumen', 'Simpan dokumen', k.nama); return ok;
+    case 'docHapus': i = demoCari(db.docs, req.docId); if (i > -1) { catat('Dokumen', 'Hapus dokumen', db.docs[i].nama); db.docs.splice(i, 1); } return ok;
+    case 'berkasHapus': db.docs.forEach(function (d) { var n = demoCari(d.files, req.berkasId); if (n > -1) { catat('Dokumen', 'Hapus berkas', d.files[n].namaFile); d.files.splice(n, 1); } }); return ok;
+    case 'upload':
+      i = demoCari(db.docs, req.docId); if (i < 0) return { ok: false, error: 'Dokumen tidak ditemukan.' };
+      if (db.docs[i].files.some(function (f) { return f.kunci === req.kunci; })) return ok;
+      db.docs[i].files.push({ id: demoId('f'), kunci: req.kunci, namaFile: req.namaFile, caption: req.caption || '', pengunggah: req.pengunggah || 'Pengguna Demo', tgl: new Date().toISOString(), ukuran: Math.floor(String(req.data || '').length * 3 / 4) });
+      catat('Dokumen', 'Unggah berkas', req.namaFile + ' → ' + db.docs[i].nama); return ok;
+    case 'unduh':
+      var nm = 'berkas'; db.docs.forEach(function (d) { var n = demoCari(d.files, req.berkasId); if (n > -1) nm = d.files[n].namaFile; });
+      return { ok: true, nama: nm.replace(/\.[^.]*$/, '') + '-contoh.txt', mime: 'text/plain', data: btoa('Ini berkas contoh dari MODE DEMO Portal Dokumen.\nPada versi sebenarnya, isi berkas yang Anda unggah tersimpan di Google Drive Anda sendiri.\n\nBerkas: ' + nm + '\n') };
+    case 'userList': return { ok: true, users: demoSalin(db.users) };
+    case 'userTambah': db.users.push({ username: String(req.username || '').toLowerCase(), nama: req.nama, role: req.role === 'admin' ? 'admin' : 'anggota', utama: false, menunggu: true }); catat('Pengguna', 'Tambah pengguna', req.username); return ok;
+    case 'userRole': i = demoCari(db.users.map(function (u) { return { id: u.username }; }), req.username); if (i > -1 && !db.users[i].utama) db.users[i].role = db.users[i].role === 'admin' ? 'anggota' : 'admin'; return ok;
+    case 'userHapus': i = demoCari(db.users.map(function (u) { return { id: u.username }; }), req.username); if (i > -1 && !db.users[i].utama) db.users.splice(i, 1); return ok;
+    case 'userResetPw': return ok;
+    case 'passwordUbah': return { ok: false, error: 'Ganti password tidak tersedia di mode demo.' };
+    case 'pengaturanSimpan': if (req.nama) db.nama = req.nama; db.pengaturan.maksMB = req.maksMB || 10; return { ok: true, tenant: { nama: db.nama, requireLogin: true, maksMB: db.pengaturan.maksMB } };
+    case 'folderSimpan': return { ok: true, folderUrl: 'https://drive.google.com/', folderNama: 'Folder Contoh (demo)' };
+    case 'logBaca':
+      var hit = {}, us = {}; db.log.forEach(function (x) { hit[x.j] = (hit[x.j] || 0) + 1; us[x.u] = x.n; });
+      var daftar = db.log.filter(function (x) { return (!req.jenis || x.j === req.jenis) && (!req.user || x.u === req.user); });
+      return { ok: true, log: daftar.slice(0, req.batas || 200), total: daftar.length, hitung: hit, pengguna: Object.keys(us).sort().map(function (u) { return { u: u, n: us[u] }; }), maks: 3000 };
+  }
+  return { ok: false, error: 'Fitur ini belum tersedia di mode demo.' };
+}
+
 function http(url, payload, ms, onProg) {
+  if (url === DEMO_URL || (payload && payload.action === 'getTenant' && String(payload.id || '').toUpperCase() === DEMO_ID)) {
+    return new Promise(function (ok) { var r = demoEngine(JSON.parse(JSON.stringify(payload))); setTimeout(function () { ok(r); }, 250); });
+  }
   return new Promise(function (resolve, reject) {
     var x = new XMLHttpRequest();
     x.open('POST', url);
@@ -1880,6 +2032,8 @@ new Vue({
         self.muatDokumen();
       }).catch(function (e) { self.loading = false; self.error = self.pesanGalat(e); });
     },
+    keluarDemo: function () { this.ls('del', 'dp_sess_DEMO'); this.gantiId(); },
+    coba: function () { this.idInput = 'DEMO'; this.masuk(); },
     simpanSesi: function () {
       if (!this.tenant) return;
       if (this.token && this.user) this.ls('set', 'dp_sess_' + this.tenant.id, JSON.stringify({ token: this.token, user: { username: this.user.username, nama: this.user.nama, role: this.user.role } }));
