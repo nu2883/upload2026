@@ -572,7 +572,7 @@
           <div class="bback" v-if="bellOpen" @click="bellOpen=false"></div>
           <div class="bdrop" v-if="bellOpen" @click.stop>
             <div class="bh"><b>&#128204; Untukmu</b><button class="pclose" style="position:static" @click="bellOpen=false" aria-label="Tutup">&#10005;</button></div>
-            <div class="muted bkos" v-if="!lonceng.length">Tidak ada tugas yang mendesak atau baru untukmu.</div>
+            <div class="muted bkos" v-if="!lonceng.length">Belum ada tugas yang menandai kamu.</div>
             <button class="um-i bi2" v-for="x in lonceng" :key="x.kid + x.tg.id" @click="bukaDariLonceng(x)">
               <span class="um-t">{{ x.tg.judul }}</span><span class="pjbaru" v-if="x.baru">BARU</span>
               <span class="um-k">{{ x.k.nama }}<template v-if="x.kn"> &middot; {{ x.kn }}</template></span><span class="dlchip" :style="{'--uc': x.k.v.warna}">{{ x.k.v.label }}</span>
@@ -641,6 +641,16 @@
             <div class="hs"><b v-hitung="ringKeg.selesai">{{ ringKeg.selesai }}</b><span>Selesai</span></div>
             <div class="hs"><b v-hitung="ringKeg.persen">{{ ringKeg.persen }}%</b><span>Rata-rata progres</span></div>
           </div>
+        </div>
+
+        <div class="untukmu" v-if="tugasMendesak.length && kegFilter!=='saya'">
+          <div class="um-h"><span class="um-pin">&#128204;</span><div><b>Untukmu: {{ tugasMendesak.length }} tugas mendesak</b><small>Kamu ditandai sebagai penanggung jawab</small></div></div>
+          <span class="um-s s1">&#10022;</span><span class="um-s s2">&#10022;</span><span class="um-s s3">&#10022;</span>
+          <button class="um-i" v-for="x in tugasMendesak.slice(0,4)" :key="x.tg.id" @click="bukaTugasSaya(x)">
+            <span class="um-t">{{ x.tg.judul }}</span><span class="pjbaru" v-if="pjBaru[x.tg.id]">BARU</span>
+            <span class="um-k">{{ x.k.nama }}</span><span class="dlchip" :style="{'--uc': x.k.v.warna}">{{ x.k.v.label }}</span>
+          </button>
+          <button class="linkbtn" style="margin-top:8px" v-if="tugasMendesak.length>4" @click="kegFilter='saya'">Lihat semua ({{ tugasMendesak.length }})</button>
         </div>
 
         <div class="cari">
@@ -2206,8 +2216,8 @@ new Vue({
         if (!sy || k.selesai) return;
         k.tugas.forEach(function (tg) {
           if (tg.selesai || !tg.pj || tg.pj.indexOf(sy) < 0) return;
-          var baru = !!(baruMap && baruMap[tg.id]), desak = k.hari !== null && k.hari <= 3;
-          if (baru || desak) out.push({ k: k, tg: tg, kid: kid, kn: kn, baru: baru, hari: k.hari === null ? 9999 : k.hari });
+          var baru = !!(baruMap && baruMap[tg.id]);
+          out.push({ k: k, tg: tg, kid: kid, kn: kn, baru: baru, hari: k.hari === null ? 9999 : k.hari });
         });
       };
       if (this.tenant) this.kegiatanV.forEach(function (k) { tambah(k, self.tenant.id, '', self.saya, self.pjBaru); });
@@ -2216,7 +2226,10 @@ new Vue({
         var d = self.gab.data[id]; if (!d || !d.kegiatan) return;
         self.turunKeg(d.kegiatan, d.saya || '').forEach(function (k) { tambah(k, id, self.namaKantor(id), d.saya || '', null); });
       });
-      return out.sort(function (a, b) { return (b.baru - a.baru) || (a.hari - b.hari); });
+      return out.sort(function (a, b) { return a.hari - b.hari; });
+    },
+    tugasMendesak: function () {
+      return this.tugasSaya.filter(function (x) { return x.k.hari !== null && x.k.hari <= 3; });
     },
     tugasSaya: function () {
       var out = [];
