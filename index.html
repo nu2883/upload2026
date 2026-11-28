@@ -472,6 +472,17 @@
 .mbar{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .mbar button{border:1px solid #c7d2fe;background:#eef2ff;color:#3730a3;border-radius:99px;padding:4px 11px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit}
 .mbar button small{opacity:.7;font-weight:500;margin-left:4px}
+.bback{position:fixed;inset:0;z-index:55;background:transparent}
+.bellw{position:relative;margin-right:6px}
+.bell{position:relative;border:1px solid var(--line);background:#fff;border-radius:999px;width:38px;height:38px;cursor:pointer;font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center}
+.bell:hover{background:#f3f5fa}
+.bell .bn{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;border-radius:99px;background:#ef4444;color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 4px;border:2px solid #fff;box-sizing:content-box}
+.bell.ring{border-color:#f59e0b;background:#fff6d1}
+.bell.ring .bik{display:inline-block;transform-origin:50% 10%;animation:pjgoyang 3.5s ease-in-out infinite}
+.bdrop{position:absolute;right:0;top:46px;z-index:60;width:min(340px,86vw);max-height:70vh;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 14px 40px rgba(20,30,60,.22);padding:10px 12px 12px}
+.bdrop .bh{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.bdrop .bkos{padding:10px 2px}
+.bdrop .bi2{background:linear-gradient(90deg,#fff6d1,#fff);border:1px solid #f5d98a}
 </style>
 </head>
 <body>
@@ -554,6 +565,20 @@
       <div class="right">
         <button class="btn ghost sm" v-if="tampilGanti" @click="gantiId">Ganti ID</button>
         <button class="btn ghost sm" v-if="tampilLoginAdmin" @click="bukaLoginAdmin">Login</button>
+        <div class="pmenu bellw" v-if="user">
+          <button class="bell" :class="{ring: lonceng.some(function (x) { return x.baru; })}" @click.stop="bukaLonceng" :title="lonceng.length ? lonceng.length + ' tugas untukmu' : 'Notifikasi'" aria-label="Notifikasi">
+            <svg class="bik" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg><span class="bn" v-if="lonceng.length">{{ lonceng.length > 9 ? '9+' : lonceng.length }}</span>
+          </button>
+          <div class="bback" v-if="bellOpen" @click="bellOpen=false"></div>
+          <div class="bdrop" v-if="bellOpen" @click.stop>
+            <div class="bh"><b>&#128204; Untukmu</b><button class="pclose" style="position:static" @click="bellOpen=false" aria-label="Tutup">&#10005;</button></div>
+            <div class="muted bkos" v-if="!lonceng.length">Tidak ada tugas yang mendesak atau baru untukmu.</div>
+            <button class="um-i bi2" v-for="x in lonceng" :key="x.kid + x.tg.id" @click="bukaDariLonceng(x)">
+              <span class="um-t">{{ x.tg.judul }}</span><span class="pjbaru" v-if="x.baru">BARU</span>
+              <span class="um-k">{{ x.k.nama }}<template v-if="x.kn"> &middot; {{ x.kn }}</template></span><span class="dlchip" :style="{'--uc': x.k.v.warna}">{{ x.k.v.label }}</span>
+            </button>
+          </div>
+        </div>
         <div class="pmenu">
           <button class="pbtn" v-if="user" @click.stop="menuOpen=!menuOpen" :aria-expanded="menuOpen ? 'true' : 'false'" title="Akun">
             <span class="pav">{{ (user.nama || user.username || '?').charAt(0).toUpperCase() }}</span>
@@ -616,16 +641,6 @@
             <div class="hs"><b v-hitung="ringKeg.selesai">{{ ringKeg.selesai }}</b><span>Selesai</span></div>
             <div class="hs"><b v-hitung="ringKeg.persen">{{ ringKeg.persen }}%</b><span>Rata-rata progres</span></div>
           </div>
-        </div>
-
-        <div class="untukmu" v-if="tugasSaya.length && kegFilter!=='saya'">
-          <div class="um-h"><span class="um-pin">&#128204;</span><div><b>Untukmu: <span>{{ tugasSaya.length }}</span> tugas</b><small>Kamu ditandai sebagai penanggung jawab</small></div></div>
-          <span class="um-s s1">&#10022;</span><span class="um-s s2">&#10022;</span><span class="um-s s3">&#10022;</span>
-          <button class="um-i" v-for="x in tugasSaya.slice(0,4)" :key="x.tg.id" @click="bukaTugasSaya(x)">
-            <span class="um-t">{{ x.tg.judul }}</span><span class="pjbaru" v-if="pjBaru[x.tg.id]">BARU</span>
-            <span class="um-k">{{ x.k.nama }}</span><span class="dlchip" :style="{'--uc': x.k.v.warna}">{{ x.k.v.label }}</span>
-          </button>
-          <button class="linkbtn" style="margin-top:8px" v-if="tugasSaya.length>4" @click="kegFilter='saya'">Lihat semua ({{ tugasSaya.length }})</button>
         </div>
 
         <div class="cari">
@@ -1540,6 +1555,7 @@ var REGISTRASI_URL = 'registerAdmin.html';
    Tidak ada yang dikirim atau disimpan ke Google Sheets/Drive; muat ulang halaman = data kembali awal.
    ============================================================ */
 var KANTOR_WARNA = ['#2457d6', '#0f9d58', '#e8710a', '#a142f4', '#d93025', '#00838f', '#c2185b', '#5d4037'];
+var OUTBOX_AKSI = ['taskSimpan', 'taskCentang', 'taskHapus', 'kegiatanCentang', 'kegiatanSimpan', 'kegiatanHapus', 'privKegSimpan', 'privKegCentang', 'privKegHapus', 'privTugasSimpan', 'privTugasCentang', 'privTugasHapus', 'linkSimpan', 'linkHapus', 'docSimpan', 'docHapus', 'berkasHapus'];
 var DEMO_ID = 'DEMO', DEMO_URL = 'demo://engine', DEMO_TOKEN = 'demo-token';
 var demoDB = null, demoSeq = 0;
 function demoIso(h, jam, mnt) { var d = new Date(Date.now() + h * 864e5); d.setHours(jam || 9, mnt || 0, 0, 0); return d.toISOString(); }
@@ -1640,7 +1656,7 @@ function demoEngine(req) {
     case 'linkKlik': Object.keys(req.hitung || {}).forEach(function (id) { var n = demoCari(db.links, id); if (n > -1) db.links[n].klik += Number(req.hitung[id]) || 0; }); return ok;
     case 'docSimpan':
       k = req.doc || {}; i = demoCari(db.docs, k.id || k.idBaru);
-      if (i < 0) db.docs.unshift({ id: k.idBaru || demoId('d'), nama: k.nama, kategori: k.kategori || '', keterangan: k.keterangan || '', wajib: !!k.wajib, files: [] });
+      if (i < 0) db.docs.push({ id: k.idBaru || demoId('d'), nama: k.nama, kategori: k.kategori || '', keterangan: k.keterangan || '', wajib: !!k.wajib, files: [] });
       else { db.docs[i].nama = k.nama; db.docs[i].kategori = k.kategori || ''; db.docs[i].keterangan = k.keterangan || ''; db.docs[i].wajib = !!k.wajib; }
       catat('Dokumen', 'Simpan dokumen', k.nama); return ok;
     case 'docHapus': i = demoCari(db.docs, req.docId); if (i > -1) { catat('Dokumen', 'Hapus dokumen', db.docs[i].nama); db.docs.splice(i, 1); } return ok;
@@ -1922,7 +1938,7 @@ new Vue({
       up: { open: false, doc: null, nama: '', items: [], busy: false, progress: 0, ke: 0, error: '' },
       docForm: { open: false, busy: false, idBaru: '', id: null, nama: '', kategori: '', keterangan: '', wajib: true, error: '' },
       userForm: { busy: false, nama: '', username: '', password: '', role: 'anggota', error: '' },
-      orang: [], saya: '', pjBaru: {},
+      orang: [], saya: '', pjBaru: {}, bellOpen: false, outbox: [],
       kantorSet: { utama: '', owner: '', namaUtama: '', list: [] },
       gab: { data: {}, memuat: false, ts: 0 },
       gabKantor: '', gabFilter: 'semua', qGab: '', gabView: 'daftar', gabHari: '', gabModal: false, gabFull: false, gabBuka: '', gabBatas: 40,
@@ -2184,6 +2200,24 @@ new Vue({
       if (ns || this.kegFilter === 'saya') o.splice(1, 0, { v: 'saya', t: '📌 Tugas saya', n: ns });
       return o;
     },
+    lonceng: function () {
+      var self = this, out = [];
+      var tambah = function (k, kid, kn, sy, baruMap) {
+        if (!sy || k.selesai) return;
+        k.tugas.forEach(function (tg) {
+          if (tg.selesai || !tg.pj || tg.pj.indexOf(sy) < 0) return;
+          var baru = !!(baruMap && baruMap[tg.id]), desak = k.hari !== null && k.hari <= 3;
+          if (baru || desak) out.push({ k: k, tg: tg, kid: kid, kn: kn, baru: baru, hari: k.hari === null ? 9999 : k.hari });
+        });
+      };
+      if (this.tenant) this.kegiatanV.forEach(function (k) { tambah(k, self.tenant.id, '', self.saya, self.pjBaru); });
+      if (this.adaGab) this.kantorIds.forEach(function (id) {
+        if (id === self.tenant.id) return;
+        var d = self.gab.data[id]; if (!d || !d.kegiatan) return;
+        self.turunKeg(d.kegiatan, d.saya || '').forEach(function (k) { tambah(k, id, self.namaKantor(id), d.saya || '', null); });
+      });
+      return out.sort(function (a, b) { return (b.baru - a.baru) || (a.hari - b.hari); });
+    },
     tugasSaya: function () {
       var out = [];
       this.kegiatanV.forEach(function (k) { if (!k.selesai) k.tugas.forEach(function (tg) { if (!tg.selesai && tg.pj && k.nSaya > 0 && tg.pj.indexOf(this.saya) > -1) out.push({ k: k, tg: tg }); }, this); }, this);
@@ -2191,7 +2225,7 @@ new Vue({
     },
     jumlahLatar: function () {
       var n = this.bgJalan, pr = function (x) { return x.antre === 'proses'; };
-      return n + this.kegAntre.filter(pr).length + this.privAntre.filter(pr).length + this.links.filter(pr).length;
+      return n + this.outbox.length + this.kegAntre.filter(pr).length + this.privAntre.filter(pr).length + this.links.filter(pr).length;
     },
     teksPil: function () {
       var u = this.jumlahAktif, l = this.jumlahLatar, t = [];
@@ -2383,6 +2417,16 @@ new Vue({
         ids.forEach(function (id) { lihat[id] = 1; }); this.ls('set', this.pjKunci(), JSON.stringify(lihat));
       }
       var baru = Object.assign({}, this.pjBaru); ids.forEach(function (id) { delete baru[id]; }); this.pjBaru = baru;
+    },
+    bukaLonceng: function () {
+      this.bellOpen = !this.bellOpen; this.menuOpen = false;
+      if (this.bellOpen && this.adaGab && Date.now() - this.gab.ts > 120000) this.gabMuat();
+    },
+    bukaDariLonceng: function (x) {
+      this.bellOpen = false;
+      if (x.kid === this.tenant.id) { this.bukaTab('kegiatan'); this.bukaTugasSaya({ k: x.k, tg: x.tg }); return; }
+      this.bukaTab('gabungan'); this.gabFilter = 'semua'; this.gabKantor = x.kid;
+      this.gabBuka = x.kid + ':' + x.k.id;
     },
     bukaTugasSaya: function (x) {
       var self = this;
@@ -2598,7 +2642,7 @@ new Vue({
       else this.ls('del', 'dp_sess_' + this.tenant.id);
     },
     sesiHabis: function (pesan) {
-      this.token = ''; this.user = null; this.priv = []; this.privAntre = []; this.simpanSesi(); this.tab = 'kegiatan';
+      this.token = ''; this.user = null; this.outbox = []; this._outDimuat = ''; this.priv = []; this.privAntre = []; this.simpanSesi(); this.tab = 'kegiatan';
       if (this.tenant.requireLogin) { this.screen = 'login'; this.error = pesan || 'Sesi berakhir. Silakan login lagi.'; this.docs = []; }
       else { this.tampilToast(pesan || 'Sesi admin berakhir.'); this.muatDokumen(); }
     },
@@ -2663,12 +2707,12 @@ new Vue({
     keluar: function () {
       this.gantiPw.open = false;
       if (this.tenant && this.kantorSet.utama === this.tenant.id) this.kantorBersihkan();     // keluar dari kantor utama: sesi kantor tambahan di perangkat ikut dihapus
-      this.token = ''; this.user = null; this.priv = []; this.privAntre = []; this.simpanSesi(); this.tab = 'kegiatan'; this.users = []; this.error = '';
+      this.token = ''; this.user = null; this.outbox = []; this._outDimuat = ''; this.priv = []; this.privAntre = []; this.simpanSesi(); this.tab = 'kegiatan'; this.users = []; this.error = '';
       if (this.tenant.requireLogin) { this.screen = 'login'; this.docs = []; } else this.muatDokumen();
     },
     gantiId: function () {
       this.ls('del', 'dp_idapp');
-      this.antrean = []; this.kegiatan = []; this.kegAntre = []; this.links = []; this.priv = []; this.privAntre = []; this.screen = 'gate'; this.tenant = null; this.docs = []; this.user = null; this.token = ''; this.error = ''; this.idInput = '';
+      this.antrean = []; this.outbox = []; this._outDimuat = ''; this.kegiatan = []; this.kegAntre = []; this.links = []; this.priv = []; this.privAntre = []; this.screen = 'gate'; this.tenant = null; this.docs = []; this.user = null; this.token = ''; this.error = ''; this.idInput = '';
     },
 
     /* ---------- data ---------- */
@@ -2718,6 +2762,7 @@ new Vue({
       if (!this.user) this.token = '';
       this.simpanSesi();
       this.jalankanAntrean();
+      this.outboxMuat(); this.outboxJalan();
       this.pjPeriksa();
       this.kantorSetelahMuat();
     },
@@ -2774,29 +2819,35 @@ new Vue({
       if (f.busy || !f.open) return;
       if (!f.nama) { f.error = 'Nama dokumen wajib diisi.'; return; }
       if (!f.id && !f.idBaru) f.idBaru = 'D' + (Math.random().toString(36).slice(2, 12) + Date.now().toString(36)).replace(/[^a-z0-9]/g, '').slice(0, 16);   // sama untuk percobaan ulang: server tidak menggandakan
-      f.error = ''; this.docForm = Object.assign({}, f, { busy: true }); f = this.docForm;
-      this.engine({ action: 'docSimpan', doc: { id: f.id, idBaru: f.idBaru, nama: f.nama, kategori: f.kategori, keterangan: f.keterangan, wajib: f.wajib } }).then(function (res) {
-        f.busy = false;
-        if (!res.ok) { f.error = res.error; return; }
-        f.open = false; self.tampilToast('Dokumen disimpan.'); self.segarkan();
-      }).catch(function (e) { f.busy = false; f.error = self.pesanGalat(e); });
+      var isi = { id: f.id, idBaru: f.idBaru, nama: f.nama, kategori: f.kategori, keterangan: f.keterangan, wajib: f.wajib };
+      var balikForm = function (pesan) { self.docForm = Object.assign({}, isi, { open: true, busy: false, error: pesan || 'Gagal menyimpan.' }); };
+      this.docForm = Object.assign({}, f, { open: false, busy: false, error: '' });      // tutup langsung, simpan di latar belakang
+      var asli = f.id ? this.docs.filter(function (x) { return x.id === f.id; })[0] : null, lama = null, tmp = null;
+      if (asli) { lama = { nama: asli.nama, kategori: asli.kategori, keterangan: asli.keterangan, wajib: asli.wajib }; Object.assign(asli, { nama: f.nama, kategori: f.kategori || 'Umum', keterangan: f.keterangan, wajib: !!f.wajib }); }
+      else if (!this.docs.some(function (x) { return x.id === f.idBaru; })) { tmp = { id: f.idBaru, nama: f.nama, kategori: f.kategori || 'Umum', keterangan: f.keterangan, wajib: !!f.wajib, files: [] }; this.docs.unshift(tmp); }
+      this.tampilToast('Dokumen disimpan.');
+      this.latar({ action: 'docSimpan', doc: isi }, function () {
+        if (asli && lama) Object.assign(asli, lama);
+        if (tmp) self.docs = self.docs.filter(function (x) { return x !== tmp; });
+        balikForm();
+      });
     },
     tanyaHapusDoc: function (d) {
       var self = this;
       this.tanya('Hapus dokumen?', '"' + d.nama + '" dan ' + d.files.length + ' berkasnya akan dihapus dari daftar, dan file-nya dipindahkan ke sampah Google Drive.', 'Hapus', function () {
-        self.engine({ action: 'docHapus', docId: d.id }).then(function (res) {
-          if (!res.ok) { self.gagalToast(res); return; }
-          self.tampilToast('Dokumen dihapus.'); self.segarkan();
-        }).catch(function (e) { self.galat(e); });
+        var i = self.docs.indexOf(d); if (i < 0) return;
+        self.docs.splice(i, 1); self.tampilToast('Dokumen dihapus.');
+        self.latar({ action: 'docHapus', docId: d.id }, function () { self.docs.splice(Math.min(i, self.docs.length), 0, d); });
       });
     },
     tanyaHapusBerkas: function (d, f) {
       var self = this;
       this.tanya('Hapus berkas?', '"' + (f.caption || f.namaFile) + '" akan dihapus dari dokumen ' + d.nama + ' dan dipindahkan ke sampah Google Drive.', 'Hapus', function () {
-        self.engine({ action: 'berkasHapus', berkasId: f.id }).then(function (res) {
-          if (!res.ok) { self.gagalToast(res); return; }
-          self.tampilToast(res.drive === 'ditolak' ? 'Catatan dihapus, tetapi file lama di Google Drive perlu dihapus manual.' : 'Berkas dihapus.'); self.segarkan();
-        }).catch(function (e) { self.galat(e); });
+        var i = d.files.indexOf(f); if (i < 0) return;
+        d.files.splice(i, 1); self.tampilToast('Berkas dihapus.');
+        self.latar({ action: 'berkasHapus', berkasId: f.id }, function () { d.files.splice(Math.min(i, d.files.length), 0, f); }, function (res) {
+          if (res && res.drive === 'ditolak') self.tampilToast('Catatan dihapus, tetapi file lama di Google Drive perlu dihapus manual.');
+        });
       });
     },
 
@@ -2831,28 +2882,28 @@ new Vue({
       if (!f.nama) { f.error = 'Nama wajib diisi.'; return; }
       if (!/^([a-z0-9._-]{3,30}|[a-z0-9._%+-]{1,64}@[a-z0-9.-]{1,63}\.[a-z]{2,})$/.test((f.username || '').toLowerCase())) { f.error = 'Isi username (3-30 karakter: huruf, angka, titik, strip, garis bawah) atau alamat email.'; return; }
       if (f.password.length < 6) { f.error = 'Password minimal 6 karakter.'; return; }
-      f.busy = true;
-      this.engine({ action: 'userTambah', nama: f.nama, username: f.username, password: f.password, role: f.role }).then(function (res) {
-        f.busy = false;
-        if (!res.ok) { f.error = res.error; return; }
-        self.userForm = { busy: false, nama: '', username: '', password: '', role: 'anggota', error: '' };
-        self.tampilToast('Pengguna ditambahkan.'); self.muatUsers();
-      }).catch(function (e) { f.busy = false; f.error = self.pesanGalat(e); });
+      var uname = f.username.trim().toLowerCase();
+      if (this.users.some(function (x) { return x.username === uname; })) { f.error = 'Username sudah dipakai.'; return; }
+      var isi = { nama: f.nama, username: f.username, password: f.password, role: f.role }, tmp = { username: uname, nama: f.nama, role: f.role, utama: false, menunggu: true };
+      this.users.push(tmp);
+      this.userForm = { busy: false, nama: '', username: '', password: '', role: 'anggota', error: '' };
+      this.tampilToast('Pengguna ditambahkan.');
+      this.latar({ action: 'userTambah', nama: isi.nama, username: isi.username, password: isi.password, role: isi.role }, function () {
+        self.users = self.users.filter(function (x) { return x !== tmp; });
+        self.userForm = { busy: false, nama: isi.nama, username: isi.username, password: isi.password, role: isi.role, error: 'Gagal menambahkan pengguna. Periksa username/email (mungkin sudah dipakai) lalu coba lagi.' };
+      });
     },
     ubahPeran: function (u) {
       var self = this;
-      this.engine({ action: 'userRole', username: u.username }).then(function (res) {
-        if (!res.ok) { self.gagalToast(res); return; }
-        self.tampilToast('Peran diperbarui.'); self.muatUsers();
-      }).catch(function (e) { self.galat(e); });
+      var lama = u.role; u.role = lama === 'admin' ? 'anggota' : 'admin'; this.tampilToast('Peran diperbarui.');
+      this.latar({ action: 'userRole', username: u.username }, function () { u.role = lama; });
     },
     tanyaHapusUser: function (u) {
       var self = this;
       this.tanya('Hapus pengguna?', u.nama + ' (' + u.username + ') tidak bisa login lagi.', 'Hapus', function () {
-        self.engine({ action: 'userHapus', username: u.username }).then(function (res) {
-          if (!res.ok) { self.gagalToast(res); return; }
-          self.tampilToast('Pengguna dihapus.'); self.muatUsers();
-        }).catch(function (e) { self.galat(e); });
+        var i = self.users.indexOf(u); if (i < 0) return;
+        self.users.splice(i, 1); self.tampilToast('Pengguna dihapus.');
+        self.latar({ action: 'userHapus', username: u.username }, function () { self.users.splice(Math.min(i, self.users.length), 0, u); }, function () { self.muatUsers(); });
       });
     },
 
@@ -3012,6 +3063,7 @@ new Vue({
     segeraCoba: function () {
       this.antrean.forEach(function (i) { if (i.status === 'antre') i.tunda = 0; });
       this.jalankanAntrean();
+      this.outboxJalan();
     },
     sebelumTutup: function (e) {
       if (!this.jumlahAktif && !this.jumlahLatar) return;
@@ -3151,10 +3203,9 @@ new Vue({
       asli.selesai = baru; asli.oleh = baru ? (this.namaPencentang() || 'Anonim') : ''; asli.tgl = baru ? new Date().toISOString() : '';
       var balik = function () { asli.selesai = lama.selesai; asli.oleh = lama.oleh; asli.tgl = lama.tgl; };
       this.kabarCentang('Kegiatan', k.nama, baru);
-      this.engine({ action: 'kegiatanCentang', kegiatanId: k.id, selesai: baru, nama: this.namaPencentang() }, { retry: true, senyap: true }).then(function (res) {
-        if (!res.ok) { balik(); self.gagalToast(res); return; }
-        if (baru) { asli.oleh = res.oleh; asli.tgl = res.tgl; }
-      }).catch(function (e) { balik(); self.galat(e); });
+      this.latar({ action: 'kegiatanCentang', kegiatanId: k.id, selesai: baru, nama: this.namaPencentang() }, balik, function (res) {
+        if (baru && res) { asli.oleh = res.oleh; asli.tgl = res.tgl; }
+      });
     },
     kirimLupa: function () {
       var l = this.lupa;
@@ -3181,12 +3232,15 @@ new Vue({
     kirimKeg: function (it) {
       var self = this;
       it.antre = 'proses'; it.galat = '';
-      this.urutSimpan(function () { return self.engine({ action: 'kegiatanSimpan', k: { idBaru: it.id, nama: it.nama, keterangan: it.keterangan, deadline: it.deadline, tugas: it.tugasMentah, tugasPj: it.tugasPj } },
-                  { ms: 60000, retry: true, senyap: true, tanpaPil: true }); }).then(function (res) {
+      var mk = function () { return { action: 'kegiatanSimpan', k: { idBaru: it.id, nama: it.nama, keterangan: it.keterangan, deadline: it.deadline, tugas: it.tugasMentah, tugasPj: it.tugasPj } }; };
+      var simpanKotak = function () { self.outboxTambah(mk(), function () { it.antre = 'selesai'; }); };
+      if (this.outbox.length && this.bolehOutbox(mk())) { simpanKotak(); return; }
+      this.urutSimpan(function () { return self.engine(mk(), { ms: 60000, retry: true, senyap: true, tanpaPil: true }); }).then(function (res) {
         if (res.ok) { it.antre = 'selesai'; self.segarkan(); return; }
+        if (res.kode === 'LOGIN' && self.bolehOutbox(mk())) { simpanKotak(); return; }
         it.antre = 'gagal';
-        it.galat = res.kode === 'LOGIN' ? 'Sesi habis. Login lagi, lalu tekan Coba lagi.' : (res.error || 'Gagal menyimpan.');
-      }).catch(function (e) { it.antre = 'gagal'; it.galat = self.pesanGalat(e); });
+        it.galat = res.error || 'Gagal menyimpan.';
+      }).catch(function (e) { if (self.bolehOutbox(mk())) { simpanKotak(); self.tampilToast('Jaringan bermasalah. Kegiatan disimpan di perangkat dan dikirim otomatis.'); } else { it.antre = 'gagal'; it.galat = self.pesanGalat(e); } });
     },
     /* Penyimpanan latar belakang dijalankan satu per satu agar engine tidak berebut kunci. */
     urutSimpan: function (fn) {
@@ -3236,12 +3290,15 @@ new Vue({
     kirimPriv: function (it) {
       var self = this;
       it.antre = 'proses'; it.galat = '';
-      this.urutSimpan(function () { return self.engine({ action: 'privKegSimpan', k: { idBaru: it.id, nama: self.ac(it.nama), keterangan: self.ac(it.keterangan), deadline: self.ac(it.deadline), tugas: it.tugasMentah.map(function (x) { return self.ac(x); }) } },
-                  { ms: 60000, retry: true, senyap: true, tanpaPil: true }); }).then(function (res) {
+      var mk = function () { return { action: 'privKegSimpan', k: { idBaru: it.id, nama: self.ac(it.nama), keterangan: self.ac(it.keterangan), deadline: self.ac(it.deadline), tugas: it.tugasMentah.map(function (x) { return self.ac(x); }) } }; };
+      var simpanKotak = function () { self.outboxTambah(mk(), function () { it.antre = 'selesai'; }); };
+      if (this.outbox.length && this.bolehOutbox(mk())) { simpanKotak(); return; }
+      this.urutSimpan(function () { return self.engine(mk(), { ms: 60000, retry: true, senyap: true, tanpaPil: true }); }).then(function (res) {
         if (res.ok) { it.antre = 'selesai'; self.segarkan(); return; }
+        if (res.kode === 'LOGIN' && self.bolehOutbox(mk())) { simpanKotak(); return; }
         it.antre = 'gagal';
-        it.galat = res.kode === 'LOGIN' ? 'Sesi habis. Login lagi, lalu tekan Coba lagi.' : (res.error || 'Gagal menyimpan.');
-      }).catch(function (e) { it.antre = 'gagal'; it.galat = self.pesanGalat(e); });
+        it.galat = res.error || 'Gagal menyimpan.';
+      }).catch(function (e) { if (self.bolehOutbox(mk())) { simpanKotak(); self.tampilToast('Jaringan bermasalah. Disimpan di perangkat dan dikirim otomatis.'); } else { it.antre = 'gagal'; it.galat = self.pesanGalat(e); } });
     },
     ulangPriv: function (k) {
       var it = this.privAntre.filter(function (x) { return x.id === k.id; })[0];
@@ -3268,9 +3325,9 @@ new Vue({
       var self = this, j = this.privTugasInput, asli = this.priv.filter(function (x) { return x.id === k.id; })[0];
       if (!j || !asli) return;
       this.privTugasInput = '';
-      var tmp = { id: this.idSementara(), judul: j, selesai: false, tgl: '', antre: 'proses' };
+      var tmp = { id: this.idT(), judul: j, selesai: false, tgl: '', antre: 'proses' };
       asli.tugas.push(tmp);
-      this.latar({ action: 'privTugasSimpan', privId: k.id, daftar: [this.ac(j)] }, function () {
+      this.latar({ action: 'privTugasSimpan', privId: k.id, daftar: [this.ac(j)], idDaftar: [tmp.id] }, function () {
         asli.tugas = asli.tugas.filter(function (x) { return x !== tmp; }); self.privTugasInput = j;
       });
     },
@@ -3360,11 +3417,15 @@ new Vue({
     kirimLink: function (it) {
       var self = this;
       it.antre = 'proses'; it.galat = '';
-      this.engine({ action: 'linkSimpan', l: { idBaru: it.id, judul: it.judul, url: it.url, keterangan: it.keterangan } }, { ms: 60000, retry: true, senyap: true, tanpaPil: true }).then(function (res) {
+      var mk = function () { return { action: 'linkSimpan', l: { idBaru: it.id, judul: it.judul, url: it.url, keterangan: it.keterangan } }; };
+      var simpanKotak = function () { self.outboxTambah(mk(), function () { it.antre = ''; }); };
+      if (this.outbox.length && this.bolehOutbox(mk())) { simpanKotak(); return; }
+      this.engine(mk(), { ms: 60000, retry: true, senyap: true, tanpaPil: true }).then(function (res) {
         if (res.ok) { it.antre = ''; return; }
+        if (res.kode === 'LOGIN' && self.bolehOutbox(mk())) { simpanKotak(); return; }
         it.antre = 'gagal';
-        it.galat = res.kode === 'LOGIN' ? 'Sesi habis. Login lagi, lalu Coba lagi.' : (res.error || 'Gagal menyimpan.');
-      }).catch(function (e) { it.antre = 'gagal'; it.galat = self.pesanGalat(e); });
+        it.galat = res.error || 'Gagal menyimpan.';
+      }).catch(function (e) { if (self.bolehOutbox(mk())) { simpanKotak(); self.tampilToast('Jaringan bermasalah. Disimpan di perangkat dan dikirim otomatis.'); } else { it.antre = 'gagal'; it.galat = self.pesanGalat(e); } });
     },
     buangLink: function (l) { this.links = this.links.filter(function (x) { return x.id !== l.id; }); },
     tanyaHapusLink: function (l) {
@@ -3379,11 +3440,62 @@ new Vue({
     /* Perubahan tampil langsung (optimis), disimpan di latar belakang dengan ikon awan; bila gagal dikembalikan. */
     latar: function (aksi, balik, sukses) {
       var self = this;
+      if (this.outbox.length && this.bolehOutbox(aksi)) { this.outboxTambah(aksi, sukses); return Promise.resolve(); }   // jaga urutan: ada yang masih menunggu
       return this.engine(aksi, { retry: true, senyap: true }).then(function (res) {
-        if (!res.ok) { balik(); self.gagalToast(res); return; }
+        if (!res.ok) {
+          if (res.kode === 'LOGIN' && self.bolehOutbox(aksi)) { self.outboxTambah(aksi, sukses); return; }          // sesi habis: simpan, kirim setelah login
+          balik(); self.gagalToast(res); return;
+        }
         if (sukses) sukses(res);
         self.segarLatar();
-      }).catch(function (e) { balik(); self.galat(e); });
+      }).catch(function (e) {
+        if (self.bolehOutbox(aksi)) { self.outboxTambah(aksi, sukses); self.tampilToast('Jaringan bermasalah. Perubahan disimpan di perangkat dan dikirim otomatis.'); return; }
+        balik(); self.galat(e);
+      });
+    },
+    /* ---------- kotak keluar: perubahan yang belum terkirim disimpan di perangkat & dikirim ulang otomatis ---------- */
+    bolehOutbox: function (aksi) {
+      return !!(this.tenant && this.user && this.tenant.id !== DEMO_ID && OUTBOX_AKSI.indexOf(aksi.action) > -1);
+    },
+    outboxKunci: function () { return 'dp_out_' + this.tenant.id + '_' + String(this.user.username).toLowerCase(); },
+    outboxSimpan: function () {
+      if (!this.tenant || !this.user) return;
+      var data = this.outbox.map(function (o) { return { n: o.n, a: o.a }; });
+      if (data.length) this.ls('set', this.outboxKunci(), JSON.stringify(data)); else this.ls('del', this.outboxKunci());
+    },
+    outboxMuat: function () {
+      if (!this.tenant || !this.user || this.tenant.id === DEMO_ID) return;
+      var kunci = this.outboxKunci(); if (this._outDimuat === kunci) return; this._outDimuat = kunci;
+      var data = []; try { data = JSON.parse(this.ls('get', kunci) || '[]') || []; } catch (e) { data = []; }
+      var ada = {}; this.outbox.forEach(function (o) { ada[o.n] = 1; });
+      var baru = data.filter(function (o) { return o && o.n && o.a && o.a.action && !ada[o.n]; });
+      if (baru.length) { this.outbox = baru.concat(this.outbox); this.tampilToast(baru.length + ' perubahan yang belum terkirim akan dikirim sekarang.'); }
+    },
+    outboxTambah: function (aksi, sukses) {
+      var a = JSON.parse(JSON.stringify(aksi)); delete a.token; delete a.id;
+      var o = { n: this.idSementara(), a: a }; this._outCb = this._outCb || {}; if (sukses) this._outCb[o.n] = sukses;
+      this.outbox.push(o); this.outboxSimpan(); this.outboxJadwal(8000);
+    },
+    outboxJadwal: function (ms) { var self = this; clearTimeout(this._outT); this._outT = setTimeout(function () { self.outboxJalan(); }, ms); },
+    outboxJalan: function () {
+      var self = this;
+      clearTimeout(this._outT);
+      if (this._outJalan || !this.outbox.length || !this.tenant || !this.user) return;
+      if (this.tenant.requireLogin && !this.token) return;
+      this._outJalan = true;
+      var langkah = function () {
+        var o = self.outbox[0];
+        if (!o) { self._outJalan = false; self.segarkan(); return; }
+        self.engine(JSON.parse(JSON.stringify(o.a)), { retry: true, senyap: true, tanpaPil: true }).then(function (res) {
+          if (res.kode === 'LOGIN') { self._outJalan = false; return; }                                   // tunggu login lagi
+          if (!res.ok && (res.kode === 'SIBUK' || res.kode === 'ERR')) { self._outJalan = false; self.outboxJadwal(15000); return; }
+          self.outbox.shift(); self.outboxSimpan();
+          var cb = self._outCb && self._outCb[o.n]; if (cb) { delete self._outCb[o.n]; if (res.ok) { try { cb(res); } catch (x) {} } }
+          if (!res.ok) self.tampilToast('Satu perubahan ditolak server: ' + (res.error || 'gagal') + '. Data dimuat ulang.');
+          langkah();
+        }).catch(function () { self._outJalan = false; self.outboxJadwal(15000); });
+      };
+      langkah();
     },
     segarLatar: function () {
       var self = this;
@@ -3396,6 +3508,7 @@ new Vue({
     },
     kA: function () { return kunciAcak(this.tenant.id, this.user ? this.user.username : ''); },
     ac: function (t) { return acak(t, this.kA()); },
+    idT: function () { return 'T' + (Math.random().toString(36).slice(2, 12) + Date.now().toString(36)).replace(/[^a-z0-9]/g, '').slice(0, 16); },
     idSementara: function () { return 'tmp' + Date.now() + Math.random().toString(36).slice(2, 7); },
     /* Ukuran huruf: preferensi per perangkat, disimpan di localStorage. */
     tunda: function (i) { return Math.min(i, 8) * 45 + 'ms'; },
@@ -3436,10 +3549,9 @@ new Vue({
       tg.selesai = baru; tg.oleh = baru ? (this.namaPencentang() || 'Anonim') : ''; tg.tgl = baru ? new Date().toISOString() : '';
       var balik = function () { tg.selesai = lama.selesai; tg.oleh = lama.oleh; tg.tgl = lama.tgl; };
       this.kabarCentang('Tugas', tg.judul, baru, this.kegiatan.filter(function (x) { return x.tugas.indexOf(tg) > -1; })[0]);
-      this.engine({ action: 'taskCentang', taskId: tg.id, selesai: baru, nama: this.namaPencentang() }, { retry: true, senyap: true }).then(function (res) {
-        if (!res.ok) { balik(); self.gagalToast(res); return; }
-        if (baru) { tg.oleh = res.oleh; tg.tgl = res.tgl; }
-      }).catch(function (e) { balik(); self.galat(e); });
+      this.latar({ action: 'taskCentang', taskId: tg.id, selesai: baru, nama: this.namaPencentang() }, balik, function (res) {
+        if (baru && res) { tg.oleh = res.oleh; tg.tgl = res.tgl; }
+      });
     },
     bukaKegForm: function (k) {
       this.kegForm = k
@@ -3474,9 +3586,9 @@ new Vue({
       var self = this, ori = this.tugasInput, m = this.mentionDari(ori), j = m.judul, asli = this.kegiatan.filter(function (x) { return x.id === k.id; })[0];
       if (!j || !asli) return;
       this.tugasInput = '';
-      var tmp = { id: this.idSementara(), judul: j, selesai: false, oleh: '', tgl: '', pj: m.pj, antre: 'proses' };
+      var tmp = { id: this.idT(), judul: j, selesai: false, oleh: '', tgl: '', pj: m.pj, antre: 'proses' };
       asli.tugas.push(tmp);
-      this.latar({ action: 'taskSimpan', kegiatanId: k.id, daftar: [j], pjDaftar: [m.pj] }, function () {
+      this.latar({ action: 'taskSimpan', kegiatanId: k.id, daftar: [j], pjDaftar: [m.pj], idDaftar: [tmp.id] }, function () {
         asli.tugas = asli.tugas.filter(function (x) { return x !== tmp; }); self.tugasInput = ori;
       });
     },
@@ -3501,6 +3613,7 @@ new Vue({
       if (e.key !== 'Escape' && e.key !== 'Esc') return;
       if (this.pv.open) { this.tutupPreview(); return; }
       if (this.gantiPw.open) { if (!this.gantiPw.wajib) this.gantiPw.open = false; return; }
+      if (this.bellOpen) { this.bellOpen = false; return; }
       if (this.menuOpen) { this.menuOpen = false; return; }
       if (this.konfirm.open) { this.konfirm.open = false; return; }
       if (this.docForm.open) { this.docForm.open = false; return; }
