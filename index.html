@@ -724,6 +724,7 @@
               <input type="text" v-model="tugasInput" maxlength="200" placeholder="Tambah tugas... (ketik @ untuk menugaskan)" @keyup.enter="tambahTugas(k)">
               <button class="btn" @click="tambahTugas(k)" :disabled="!tugasInput">Tambah</button>
             </div>
+            <div class="mbar" v-if="bisaKelola && !k.antre && !orang.length && /(^|\s)@$/.test(tugasInput)"><span class="muted">Daftar nama belum diterima dari Engine. Pastikan EngineUpload.gs terbaru sudah di-deploy sebagai versi baru, lalu muat ulang.</span></div>
             <div class="mbar" v-if="bisaKelola && !k.antre && saranMention(tugasInput).length"><button v-for="o in saranMention(tugasInput)" :key="o.h" @click="tugasInput = pasangMention(tugasInput, o.h)">@{{ o.h }}<small>{{ o.n }}</small></button></div>
             <div class="acts left" v-if="!k.antre">
               <button class="btn ghost sm" v-if="bisaKelola" @click="bukaKegForm(k)">Edit kegiatan</button>
