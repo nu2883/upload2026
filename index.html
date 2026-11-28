@@ -436,6 +436,13 @@
 .demobox b{color:#3730a3}.demobox code{background:#fff;border:1px solid #c7d2fe;border-radius:6px;padding:1px 8px;font-weight:700}
 .ghostdemo{background:#fff!important;color:#3730a3!important;border:1.5px solid #6366f1!important;margin-top:6px}
 .demobar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 12px;padding:10px 14px;border-radius:12px;background:#fef3c7;color:#78350f;font-size:.9rem;border:1px solid #fcd34d}
+.kbadge{display:inline-block;color:#fff;font-size:12px;font-weight:700;padding:2px 9px;border-radius:99px;white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
+.kdot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px}
+.krow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 0;border-top:1px solid #e5e7eb}
+.krow:first-of-type{border-top:0}
+.krow .kn2{flex:1;min-width:140px;font-weight:700}
+.kwarn{margin:10px 0;padding:10px 14px;border-radius:12px;background:#fff4e5;color:#7a4100;border:1px solid #ffd8a8;font-size:.92rem;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.kwarn span{flex:1;min-width:160px}
 </style>
 </head>
 <body>
@@ -535,6 +542,7 @@
               <span class="muted pid">ID_APP <span class="idtag">{{ tenant.id }}</span></span>
             </div>
             <button class="pitem" v-if="user" @click="bukaGantiPw(false, '')">&#128273; Ganti password</button>
+            <button class="pitem" v-if="user && tenant.id!=='DEMO'" @click="bukaTab('kantor'); menuOpen=false">&#127970; Kantor saya</button>
             <template v-if="user && isAdmin">
               <button class="pitem" @click="bukaTab('pengguna'); menuOpen=false">&#128101; Pengguna</button>
               <button class="pitem" @click="bukaTab('pengaturan'); menuOpen=false">&#9881; Pengaturan</button>
@@ -684,6 +692,153 @@
         <button class="salin-f" :class="{ok: salinId==='keg:'+k.id}" v-if="bukaKeg===k.id" @click="salinKeg(k)" title="Salin ringkasan untuk ditempel" aria-label="Salin ringkasan"><ikon-salin :ok="salinId==='keg:'+k.id"></ikon-salin></button>
         </div>
         <pager v-if="kegView==='daftar'" :hal="kegHalAktif" :total="kegTotalHal" :jumlah="kegSaring.length" :per="perKeg" satuan="kegiatan" @pindah="halamanKeg" @ukuran="ubahUkuran('keg', $event)"></pager>
+        </div>
+      </div>
+
+      <!-- ----- TAB SEMUA KANTOR (deadline gabungan) ----- -->
+      <div v-if="tab==='gabungan' && adaGab">
+        <div class="hero">
+          <div class="hero-t">
+            <div>
+              <div class="hero-k">&#127970; Semua kantor</div>
+              <div class="hero-n"><span v-hitung="ringGab.aktif">{{ ringGab.aktif }}</span> kegiatan berjalan di {{ gabKantor ? 1 : kantorIds.length }} kantor</div>
+            </div>
+            <button class="btn light" @click="bukaKegForm(null)">+ Kegiatan</button>
+          </div>
+          <div class="hero-s">
+            <div class="hs late"><b v-hitung="ringGab.terlambat">{{ ringGab.terlambat }}</b><span>Terlambat</span></div>
+            <div class="hs soon"><b v-hitung="ringGab.mendesak">{{ ringGab.mendesak }}</b><span>Mendesak (&le; 3 hari)</span></div>
+            <div class="hs"><b v-hitung="ringGab.selesai">{{ ringGab.selesai }}</b><span>Selesai</span></div>
+            <div class="hs"><b v-hitung="ringGab.persen">{{ ringGab.persen }}%</b><span>Rata-rata progres</span></div>
+          </div>
+        </div>
+
+        <div class="kwarn" v-for="id in gabAdaMasalah" :key="'w'+id">
+          <span><b>{{ namaKantor(id) }}</b>: {{ gabStatus(id)==='login' ? 'sesi berakhir, login lagi untuk menampilkan kegiatannya.' : 'gagal dimuat. ' + ((gab.data[id] || {}).pesan || '') }}</span>
+          <button class="btn sm" v-if="gabStatus(id)==='login'" @click="bukaKantor(id)">Buka &amp; login</button>
+          <button class="btn ghost sm" v-else @click="gabMuatId(id)">Coba lagi</button>
+        </div>
+
+        <div class="cari"><input type="text" v-model.trim="qGab" placeholder="Cari di semua kantor..."></div>
+
+        <div class="chips">
+          <button class="chip" :class="{on: !gabKantor}" @click="gabKantor=''">Semua kantor</button>
+          <button class="chip" :class="{on: gabKantor===id}" v-for="id in kantorIds" :key="id" @click="gabKantor=id"><i class="kdot" :style="{background: warnaKantor(id)}"></i>{{ namaKantor(id) }}</button>
+        </div>
+        <div class="chips">
+          <button class="chip" :class="{on: gabFilter===o.v}" v-for="o in gabOpsi" :key="o.v" @click="gabFilter=o.v">{{ o.t }} ({{ o.n }})</button>
+          <span class="spacer"></span>
+          <div class="seg"><button :class="{on: gabView==='daftar'}" @click="setGabView('daftar')">&#9776; Daftar</button><button :class="{on: gabView==='kalender'}" @click="setGabView('kalender')">&#128197; Kalender</button></div>
+          <button class="linkbtn" @click="gabSegarkan">{{ gab.memuat ? 'Memuat...' : 'Muat ulang' }}</button>
+        </div>
+
+        <template v-if="gabView==='kalender'">
+          <kalender :items="gabKalItems" :dipilih="gabHari" :full="gabFull" @pilih="pilihHariGab" @full="setGabFull"></kalender>
+          <div class="kal-info"><span class="muted">Ketuk tanggal untuk melihat kegiatannya.</span></div>
+        </template>
+        <div class="kdaftar" :class="{hariModal: gabModal}" @click.self="gabModal = false">
+        <div class="kmhead" v-if="gabModal">
+          <div class="kmtgl"><span class="kmd">{{ hariAngka(gabHari) }}</span><span class="kmb">{{ bulanSingkat(gabHari) }}</span></div>
+          <div class="kmt"><b>{{ hariPanjang(gabHari) }}</b><span class="muted">{{ gabDaftar.length }} kegiatan<span v-if="gabDaftar.length"> &middot; {{ belumN(gabDaftar) }} belum selesai</span></span></div>
+          <button class="mini kmx" @click="gabModal = false" aria-label="Tutup">&#10005;</button>
+        </div>
+        <div v-if="!gabDaftar.length && (gabView==='daftar' || gabModal)" class="card empty">
+          {{ gabView==='kalender' ? 'Tidak ada kegiatan pada tanggal ini.' : (gab.memuat ? 'Memuat kegiatan dari kantor lain...' : 'Tidak ada kegiatan pada filter ini.') }}
+        </div>
+
+        <div class="kw" v-for="(k, i) in gabDaftar" :key="k.gid">
+        <div class="kcard" :class="['u-'+k.v.kelas, {open: gabBuka===k.gid}]" :style="{'--uc': k.v.warna, '--ub': k.v.latar}">
+          <div class="kh" @click="gabBuka = (gabBuka===k.gid ? '' : k.gid)">
+            <button class="cbk" :class="{on: k.selesai}" v-if="!k.tugas.length" :disabled="!!k.antre" @click.stop="gabCentangKeg(k)" :title="k.selesai ? 'Batalkan selesai' : 'Tandai kegiatan selesai'">
+              <svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+            </button>
+            <div class="ring" v-else>
+              <svg viewBox="0 0 44 44"><circle class="tr" cx="22" cy="22" r="18" fill="none" stroke-width="5"></circle><circle class="fg" cx="22" cy="22" r="18" fill="none" stroke-width="5" stroke-linecap="round" :stroke-dasharray="(k.persen*1.131)+' 113.1'"></circle></svg>
+              <span>{{ k.persen }}%</span>
+            </div>
+            <div class="kinfo">
+              <div class="kn">{{ k.nama }}</div>
+              <div class="kmeta">
+                <span class="kbadge" :style="{background: k.kantorWarna}">{{ k.kantorNama }}</span>
+                <span class="dlchip">{{ k.v.label }}</span>
+                <span class="muted"><b class="dldate" v-if="k.deadline">{{ tglDl(k.deadline) }}</b><template v-if="ketKeg(k)"><template v-if="k.deadline"> &middot; </template>{{ ketKeg(k) }}</template></span>
+              </div>
+            </div>
+            <ikon-awan v-if="k.antre" :s="k.antre"></ikon-awan>
+            <span class="chev" :class="{on: gabBuka===k.gid}">&#9662;</span>
+          </div>
+          <div class="kb" v-if="gabBuka===k.gid">
+            <div class="muted" v-if="k.keterangan" style="margin-top:10px">{{ k.keterangan }}</div>
+            <div class="bar" v-if="k.tugas.length"><i :style="{width: k.persen+'%'}"></i></div>
+            <div class="muted" v-if="!k.tugas.length" style="margin-top:10px">Tanpa tugas: centang bulatan di kiri bila sudah selesai.</div>
+            <div style="margin-top:6px">
+              <div class="trow" :class="{done: tg.selesai}" v-for="tg in k.tugas" :key="tg.id">
+                <button class="cb" :class="{on: tg.selesai}" :disabled="!!k.antre || !!tg.antre" @click="gabCentangTugas(k, tg)" :title="tg.selesai ? 'Batalkan selesai' : 'Tandai selesai'">
+                  <svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+                </button>
+                <div class="tt">
+                  <span class="tj">{{ tg.judul }}</span>
+                  <div class="tm" v-if="tg.selesai && (tg.oleh || tg.tgl)">Selesai{{ tg.oleh ? ' oleh ' + tg.oleh : '' }}{{ tg.tgl ? ' &middot; ' + tglJam(tg.tgl) : '' }}</div>
+                </div>
+                <ikon-awan v-if="tg.antre" :s="tg.antre"></ikon-awan>
+              </div>
+            </div>
+            <div class="acts left">
+              <button class="btn ghost sm" @click="bukaKantor(k.kantorId)">{{ k.kantorId === tenant.id ? 'Buka di tab Deadline' : 'Buka kantor ini' }}</button>
+            </div>
+          </div>
+        </div>
+        </div>
+        <div style="text-align:center;margin:14px 0" v-if="gabView==='daftar' && gabSaring.length > gabBatas"><button class="btn ghost" @click="gabBatas += 40">Tampilkan lebih banyak ({{ gabSaring.length - gabBatas }})</button></div>
+        </div>
+      </div>
+
+      <!-- ----- KANTOR SAYA ----- -->
+      <div v-if="tab==='kantor' && user">
+        <div class="card" style="margin-bottom:14px">
+          <h2 style="margin:0 0 6px">&#127970; Kantor saya</h2>
+          <div class="muted">Gabungkan deadline dari beberapa ID_APP dalam satu tampilan ("Semua Kantor"). Mengunggah dokumen, link, dan pengaturan tetap dilakukan di tiap kantor.</div>
+          <div style="margin-top:12px">
+            <div class="krow" v-if="kantorSet.utama">
+              <span class="kn2">{{ namaKantor(kantorSet.utama) }}</span><span class="idtag">{{ kantorSet.utama }}</span><span class="badge b-adm">Utama</span>
+              <button class="btn ghost sm" v-if="kantorSet.utama!==tenant.id" @click="bukaKantor(kantorSet.utama)">Buka</button>
+            </div>
+            <div class="krow" v-for="(x, i) in kantorSet.list" :key="x.id">
+              <span class="kn2"><i class="kdot" :style="{background: warnaKantor(x.id)}"></i>{{ x.nama }}</span><span class="idtag">{{ x.id }}</span>
+              <span class="muted">{{ x.id===tenant.id ? 'Sedang dibuka' : (sesiKantor(x.id) ? 'Sudah login' : 'Perlu login') }}</span>
+              <button class="btn ghost sm" v-if="x.id!==tenant.id" @click="bukaKantor(x.id)">Buka</button>
+              <button class="btn danger sm" @click="kantorHapus(x)">Hapus</button>
+            </div>
+            <div class="muted" v-if="!kantorSet.utama">Belum ada kantor tambahan. Kantor yang sedang Anda buka ({{ tenant.nama }}) akan menjadi <b>kantor utama</b> saat Anda menambahkan kantor pertama.</div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:14px">
+          <h2 style="margin:0 0 6px">Tambah kantor</h2>
+          <template v-if="kantorForm.langkah===1">
+            <label>ID_APP kantor</label>
+            <input type="text" v-model.trim="kantorForm.id" maxlength="10" autocapitalize="characters" placeholder="contoh: K7M2QX" @keyup.enter="kantorPeriksa">
+            <div class="err" v-if="kantorForm.error">{{ kantorForm.error }}</div>
+            <div style="margin-top:10px"><button class="btn" :disabled="kantorForm.busy || !kantorForm.id" @click="kantorPeriksa">{{ kantorForm.busy ? 'Memeriksa...' : 'Lanjut' }}</button></div>
+          </template>
+          <template v-else>
+            <div class="muted">Kantor: <b>{{ kantorForm.nama }}</b> <span class="idtag">{{ kantorForm.id }}</span></div>
+            <label>Username di kantor ini</label>
+            <input type="text" v-model.trim="kantorForm.username" maxlength="80" autocapitalize="none" autocomplete="off">
+            <label>Password</label>
+            <input type="password" v-model="kantorForm.password" maxlength="100" autocomplete="off" @keyup.enter="kantorMasuk">
+            <div class="err" v-if="kantorForm.error">{{ kantorForm.error }}</div>
+            <div class="acts left" style="margin-top:10px">
+              <button class="btn" :disabled="kantorForm.busy" @click="kantorMasuk">{{ kantorForm.busy ? 'Masuk...' : 'Masuk & simpan' }}</button>
+              <button class="btn ghost" :disabled="kantorForm.busy" @click="kantorForm = { id: '', nama: '', username: '', password: '', langkah: 1, busy: false, error: '' }">Batal</button>
+            </div>
+          </template>
+        </div>
+
+        <div class="card">
+          <b>Tentang privasi</b>
+          <div class="muted" style="margin-top:6px">Password tidak disimpan. Hanya sesi login yang tersimpan di perangkat ini. Daftar kantor tambahan juga disimpan di spreadsheet kantor utama dalam bentuk samaran (seperti deadline privat) agar terbawa ke perangkat lain. Admin tidak melihat isinya secara langsung, tetapi ini bukan enkripsi penuh. Kantor tambahan tidak mengetahui kantor lain Anda.</div>
+          <div style="margin-top:10px" v-if="kantorSet.utama"><button class="btn danger sm" @click="keluarSemua">Keluar dari semua kantor</button></div>
         </div>
       </div>
 
@@ -1251,6 +1406,8 @@
   <div class="overlay" v-if="kegForm.open" @click.self="kegForm.open=false">
     <div class="card modal">
       <h2>{{ kegForm.id ? 'Edit kegiatan' : 'Tambah kegiatan' }}</h2>
+      <template v-if="!kegForm.id && adaGab"><label>Kantor</label>
+      <select v-model="kegForm.kantor"><option v-for="id in kantorIds" :key="id" :value="id">{{ namaKantor(id) }}</option></select></template>
       <label>Nama kegiatan</label>
       <input type="text" v-model.trim="kegForm.nama" maxlength="120" placeholder="contoh: Laporan Keuangan Triwulan IV">
       <label>Deadline <span class="opt">(opsional)</span></label>
@@ -1335,6 +1492,7 @@ var REGISTRASI_URL = 'registerAdmin.html';
    ID_APP "DEMO" + akun demo / demo berjalan sepenuhnya di browser dengan data contoh.
    Tidak ada yang dikirim atau disimpan ke Google Sheets/Drive; muat ulang halaman = data kembali awal.
    ============================================================ */
+var KANTOR_WARNA = ['#2457d6', '#0f9d58', '#e8710a', '#a142f4', '#d93025', '#00838f', '#c2185b', '#5d4037'];
 var DEMO_ID = 'DEMO', DEMO_URL = 'demo://engine', DEMO_TOKEN = 'demo-token';
 var demoDB = null, demoSeq = 0;
 function demoIso(h, jam, mnt) { var d = new Date(Date.now() + h * 864e5); d.setHours(jam || 9, mnt || 0, 0, 0); return d.toISOString(); }
@@ -1717,6 +1875,10 @@ new Vue({
       up: { open: false, doc: null, nama: '', items: [], busy: false, progress: 0, ke: 0, error: '' },
       docForm: { open: false, busy: false, idBaru: '', id: null, nama: '', kategori: '', keterangan: '', wajib: true, error: '' },
       userForm: { busy: false, nama: '', username: '', password: '', role: 'anggota', error: '' },
+      kantorSet: { utama: '', owner: '', namaUtama: '', list: [] },
+      gab: { data: {}, memuat: false, ts: 0 },
+      gabKantor: '', gabFilter: 'semua', qGab: '', gabView: 'daftar', gabHari: '', gabModal: false, gabFull: false, gabBuka: '', gabBatas: 40,
+      kantorForm: { id: '', nama: '', username: '', password: '', langkah: 1, busy: false, error: '' },
       logData: { log: [], total: 0, hitung: {}, pengguna: [], maks: 0 }, logJenis: '', logUser: '', logBatas: 200, logBusy: false, logErr: '', logJenisList: ['Login', 'Dokumen', 'Deadline', 'Link', 'Pengguna', 'Pengaturan'],
       set: { nama: '', requireLogin: false, maksMB: 10, error: '' }, folderBaru: '', folderErr: '', folderBusy: false,
       konfirm: { open: false, judul: '', teks: '', tombol: '', fn: null }
@@ -1769,6 +1931,7 @@ new Vue({
     },
     tabs: function () {
       var t = [{ v: 'kegiatan', t: 'Deadline', n: this.jumlahMendesak }];
+      if (this.adaGab) t.push({ v: 'gabungan', t: 'Semua Kantor', s: 'Semua' });
       if (this.user) t.push({ v: 'priv', t: 'Deadline Privat', s: 'Privat', n: this.jumlahMendesakPriv });
       t.push({ v: 'dokumen', t: 'Dokumen' });
       t.push({ v: 'link', t: 'Link Penting', s: 'Link' });
@@ -1855,6 +2018,73 @@ new Vue({
     linkTotalHal: function () { return Math.max(1, Math.ceil(this.linkSaring.length / this.perLink)); },
     linkHalAktif: function () { return Math.min(Math.max(this.halLink, 1), this.linkTotalHal); },
     linkTampil: function () { var a = (this.linkHalAktif - 1) * this.perLink; return this.linkSaring.slice(a, a + this.perLink); },
+    kantorIds: function () {
+      var s = this.kantorSet, out = [];
+      if (!s.utama) return out;
+      out.push(s.utama);
+      s.list.forEach(function (x) { if (out.indexOf(x.id) < 0) out.push(x.id); });
+      return out;
+    },
+    adaGab: function () {
+      var s = this.kantorSet;
+      return !!(this.user && this.tenant && s.utama && s.list.length && this.tenant.id !== DEMO_ID && this.kantorIds.indexOf(this.tenant.id) > -1);
+    },
+    gabSemua: function () {
+      var self = this, out = [];
+      if (!this.adaGab) return out;
+      this.kantorIds.forEach(function (id, idx) {
+        var nama = self.namaKantor(id), warna = KANTOR_WARNA[idx % KANTOR_WARNA.length];
+        var src = id === self.tenant.id ? self.kegiatanV : self.turunKeg(((self.gab.data[id] || {}).kegiatan) || []);
+        src.forEach(function (k) { out.push(Object.assign({}, k, { kantorId: id, kantorNama: nama, kantorWarna: warna, gid: id + ':' + k.id })); });
+      });
+      return out;
+    },
+    gabBase: function () { var f = this.gabKantor; return this.gabSemua.filter(function (k) { return !f || k.kantorId === f; }); },
+    gabUrut: function () {
+      return this.gabBase.slice().sort(function (a, b) {
+        if (a.selesai !== b.selesai) return a.selesai ? 1 : -1;
+        if (a.hari === null && b.hari === null) return 0;
+        if (a.hari === null) return 1;
+        if (b.hari === null) return -1;
+        return a.selesai ? b.hari - a.hari : a.hari - b.hari;
+      });
+    },
+    gabSaring: function () {
+      var f = this.gabFilter, q = this.qGab.toLowerCase();
+      return this.gabUrut.filter(function (k) {
+        if (f === 'mendesak' && !(!k.selesai && k.hari !== null && k.hari >= 0 && k.hari <= 3)) return false;
+        if (f === 'terlambat' && !(!k.selesai && k.hari !== null && k.hari < 0)) return false;
+        if (f === 'berjalan' && k.selesai) return false;
+        if (f === 'selesai' && !k.selesai) return false;
+        if (!q) return true;
+        return [k.nama, k.keterangan, k.kantorNama].concat(k.tugas.map(function (x) { return x.judul + ' ' + x.oleh; })).join(' ').toLowerCase().indexOf(q) !== -1;
+      });
+    },
+    ringGab: function () {
+      var v = this.gabBase, aktif = v.filter(function (k) { return !k.selesai; });
+      var terlambat = aktif.filter(function (k) { return k.hari !== null && k.hari < 0; }).length;
+      var mendesak = aktif.filter(function (k) { return k.hari !== null && k.hari >= 0 && k.hari <= 3; }).length;
+      var rata = v.length ? Math.round(v.reduce(function (a, k) { return a + k.persen; }, 0) / v.length) : 0;
+      return { aktif: aktif.length, terlambat: terlambat, mendesak: mendesak, selesai: v.length - aktif.length, persen: rata };
+    },
+    gabOpsi: function () {
+      var r = this.ringGab;
+      return [{ v: 'semua', t: 'Semua', n: this.gabBase.length }, { v: 'berjalan', t: 'Berjalan', n: r.aktif }, { v: 'mendesak', t: 'Mendesak', n: r.mendesak },
+              { v: 'terlambat', t: 'Terlambat', n: r.terlambat }, { v: 'selesai', t: 'Selesai', n: r.selesai }];
+    },
+    gabDaftar: function () {
+      var h = this.gabHari;
+      return this.gabView === 'kalender' ? (h && this.gabModal ? this.gabSaring.filter(function (k) { return k.deadline === h; }) : []) : this.gabSaring.slice(0, this.gabBatas);
+    },
+    gabKalItems: function () {
+      return this.gabSaring.filter(function (k) { return k.deadline; }).map(function (k) {
+        return { id: k.gid, nama: k.kantorNama.split(' ')[0].slice(0, 6) + ' · ' + k.nama, deadline: k.deadline, warna: k.v.warna, latar: k.v.latar, selesai: k.selesai };
+      });
+    },
+    gabAdaMasalah: function () {
+      var self = this;
+      return this.kantorIds.filter(function (id) { var st = self.gabStatus(id); return st === 'login' || st === 'galat'; });
+    },
     kegSaring: function () {
       var f = this.kegFilter, q = this.qKeg.toLowerCase();
       return this.kegUrut.filter(function (k) {
@@ -1949,7 +2179,7 @@ new Vue({
     this.terapkanAnim();
     this.$watch('tab', this.tutupKalFull);
     var self = this;
-    this.$watch(function () { return [self.kegFull, self.privFull, self.kegModal, self.privModal].join(); }, this.kunciLayar);
+    this.$watch(function () { return [self.kegFull, self.privFull, self.kegModal, self.privModal, self.gabFull, self.gabModal].join(); }, this.kunciLayar);
     hidupkan();
     document.addEventListener('keydown', this.tekanKey);
     document.addEventListener('click', function () { selfM.menuOpen = false; });
@@ -1960,6 +2190,7 @@ new Vue({
     var dariUrl = '';
     try { dariUrl = (new URLSearchParams(location.search).get('id') || '').toUpperCase(); } catch (e) {}
     var saved = dariUrl || this.ls('get', 'dp_idapp');
+    this.kantorMuatLS();
     if (saved) { this.idInput = saved; this.masuk(true); }
   },
   methods: {
@@ -2045,6 +2276,202 @@ new Vue({
     },
     keluarDemo: function () { this.ls('del', 'dp_sess_DEMO'); this.gantiId(); },
     coba: function () { this.idInput = 'DEMO'; this.catatDemo('klik_coba'); this.masuk(1); },
+    /* ---------- KANTOR SAYA & TAMPILAN GABUNGAN ---------- */
+    kantorMuatLS: function () {
+      var r = null; try { r = JSON.parse(this.ls('get', 'dp_kantor') || 'null'); } catch (e) {}
+      if (r && r.utama && Array.isArray(r.list)) this.kantorSet = { utama: r.utama, owner: r.owner || '', namaUtama: r.namaUtama || '', list: r.list.filter(function (x) { return x && x.id; }) };
+    },
+    kantorSimpanLS: function () { if (!this.kantorSet.utama) this.ls('del', 'dp_kantor'); else this.ls('set', 'dp_kantor', JSON.stringify(this.kantorSet)); },
+    sesiKantor: function (id) { var x = null; try { x = JSON.parse(this.ls('get', 'dp_sess_' + id) || 'null'); } catch (e) {} return x && x.token ? x : null; },
+    simpanSesiKantor: function (id, tk, user) { this.ls('set', 'dp_sess_' + id, JSON.stringify({ token: tk, user: user })); },
+    namaKantor: function (id) {
+      if (this.tenant && id === this.tenant.id) return this.tenant.nama;
+      var d = this.gab.data[id]; if (d && d.nama) return d.nama;
+      var s = this.kantorSet; if (id === s.utama && s.namaUtama) return s.namaUtama;
+      var l = s.list.filter(function (x) { return x.id === id; })[0]; return l ? l.nama : id;
+    },
+    warnaKantor: function (id) { var i = this.kantorIds.indexOf(id); return KANTOR_WARNA[(i < 0 ? 0 : i) % KANTOR_WARNA.length]; },
+    gabStatus: function (id) { if (this.tenant && id === this.tenant.id) return 'ok'; var d = this.gab.data[id]; return d ? d.status : 'muat'; },
+    urlKantor: function (id, hindari) {
+      var self = this; this._kurl = this._kurl || {};
+      if (this._kurl[id] && !hindari) return Promise.resolve(this._kurl[id]);
+      return http(MASTER_URL, { action: 'getTenant', id: id, hindari: hindari || 0 }, 30000).then(function (r) {
+        if (!r.ok) throw new Error(r.error || 'Kantor tidak ditemukan.');
+        self._kurl[id] = { url: r.engine.url, no: r.engine.no, nama: r.tenant.nama, wajib: !!r.tenant.requireLogin };
+        return self._kurl[id];
+      });
+    },
+    /* Panggilan ke kantor lain memakai sesi kantor itu (disimpan di perangkat), tanpa mengubah kantor yang sedang dibuka. */
+    engineKantor: function (id, payload, opsi) {
+      var self = this; opsi = opsi || {}; payload.id = id;
+      var kirim = function (info) { var x = self.sesiKantor(id); payload.token = x ? x.token : undefined; return http(info.url, payload, opsi.ms || 60000); };
+      return this.urlKantor(id).then(function (info) {
+        return kirim(info).catch(function (e) { if (!opsi.retry) throw e; return self.urlKantor(id, info.no).then(kirim); });
+      }).then(function (res) {
+        if (res && res.token) { var x = self.sesiKantor(id); if (x) self.simpanSesiKantor(id, res.token, x.user); }
+        return res;
+      });
+    },
+    callKantor: function (id, payload, opsi) { return (this.tenant && id === this.tenant.id) ? this.engine(payload, opsi) : this.engineKantor(id, payload, opsi); },
+    gabMuatId: function (id) {
+      var self = this, lama = this.gab.data[id];
+      this.$set(this.gab.data, id, { id: id, nama: lama ? lama.nama : this.namaKantor(id), kegiatan: lama ? lama.kegiatan : [], status: 'muat', pesan: '' });
+      return this.engineKantor(id, { action: 'getData', ringkas: true }, { retry: true, ms: 45000 }).then(function (res) {
+        var d = self.gab.data[id]; if (!d) return;
+        if (!res.ok) { d.status = res.kode === 'LOGIN' ? 'login' : 'galat'; d.pesan = res.error || ''; return; }
+        d.nama = (res.tenant && res.tenant.nama) || d.nama;
+        d.kegiatan = (res.kegiatan || []).map(function (k) { return Object.assign({ antre: '', galat: '', keterangan: '', tugas: [] }, k); });
+        d.status = 'ok'; d.pesan = '';
+      }).catch(function (e) { var d = self.gab.data[id]; if (d) { d.status = 'galat'; d.pesan = self.pesanGalat(e); } });
+    },
+    gabMuat: function () {
+      var self = this; if (!this.adaGab) return;
+      var ids = this.kantorIds.filter(function (id) { return id !== self.tenant.id; });
+      this.gab.ts = Date.now();
+      if (!ids.length) return;
+      this.gab.memuat = true;
+      Promise.all(ids.map(function (id) { return self.gabMuatId(id); })).then(function () { self.gab.memuat = false; });
+    },
+    gabSegarkan: function () { this.segarkan(); this.gabMuat(); },
+    gabTandaiLogin: function (id) { var d = this.gab.data[id]; if (d) d.status = 'login'; },
+    gabCentangTugas: function (k, tg) {
+      var self = this;
+      if (k.kantorId === this.tenant.id) { this.centang(tg); return; }
+      this.tanyaCentang('Tugas', tg, k, function (o) { self.gabCentangJalan(k, o); });
+    },
+    gabCentangJalan: function (k, tg) {
+      var self = this, kid = k.kantorId, baru = !tg.selesai, lama = { selesai: tg.selesai, oleh: tg.oleh, tgl: tg.tgl };
+      var x = this.sesiKantor(kid), nama = (x && x.user && x.user.nama) || 'Anonim';
+      tg.selesai = baru; tg.oleh = baru ? nama : ''; tg.tgl = baru ? new Date().toISOString() : '';
+      var balik = function () { tg.selesai = lama.selesai; tg.oleh = lama.oleh; tg.tgl = lama.tgl; };
+      this.kabarCentang('Tugas', tg.judul, baru, k);
+      this.engineKantor(kid, { action: 'taskCentang', taskId: tg.id, selesai: baru, nama: nama }, { retry: true }).then(function (res) {
+        if (!res.ok) { balik(); if (res.kode === 'LOGIN') { self.gabTandaiLogin(kid); self.tampilToast('Sesi ' + self.namaKantor(kid) + ' berakhir. Buka kantor itu untuk login lagi.'); } else self.gagalToast(res); return; }
+        if (baru) { tg.oleh = res.oleh; tg.tgl = res.tgl; }
+      }).catch(function (e) { balik(); self.galat(e); });
+    },
+    gabCentangKeg: function (k) {
+      var self = this;
+      if (k.kantorId === this.tenant.id) { this.centangKeg(k); return; }
+      this.tanyaCentang('Kegiatan', k, null, function (o) {
+        var d = self.gab.data[k.kantorId], asli = d && d.kegiatan.filter(function (z) { return z.id === k.id; })[0];
+        if (!asli) return;
+        var baru = !o.selesai, lama = { selesai: asli.selesai, oleh: asli.oleh, tgl: asli.tgl };
+        var x = self.sesiKantor(k.kantorId), nama = (x && x.user && x.user.nama) || 'Anonim';
+        asli.selesai = baru; asli.oleh = baru ? nama : ''; asli.tgl = baru ? new Date().toISOString() : '';
+        var balik = function () { asli.selesai = lama.selesai; asli.oleh = lama.oleh; asli.tgl = lama.tgl; };
+        self.kabarCentang('Kegiatan', k.nama, baru);
+        self.engineKantor(k.kantorId, { action: 'kegiatanCentang', kegiatanId: k.id, selesai: baru, nama: nama }, { retry: true }).then(function (res) {
+          if (!res.ok) { balik(); if (res.kode === 'LOGIN') { self.gabTandaiLogin(k.kantorId); self.tampilToast('Sesi ' + self.namaKantor(k.kantorId) + ' berakhir. Buka kantor itu untuk login lagi.'); } else self.gagalToast(res); return; }
+          if (baru) { asli.oleh = res.oleh; asli.tgl = res.tgl; }
+        }).catch(function (e) { balik(); self.galat(e); });
+      });
+    },
+    bukaKantor: function (id) {
+      if (this.tenant && id === this.tenant.id) { this.tab = 'kegiatan'; return; }
+      this.gantiId(); this.idInput = id; this.masuk(1);
+    },
+    setGabView: function (v) { if (v !== 'kalender') { this.gabFull = false; this.gabModal = false; this.kunciLayar(); } this.gabView = v; if (v === 'kalender' && !this.gabHari) this.gabHari = this.hariIniKey(); },
+    pilihHariGab: function (k) { this.gabHari = k; this.gabModal = true; this.gabBuka = ''; },
+    setGabFull: function () { this.gabFull = !this.gabFull; this.gabModal = false; this.gabBuka = ''; this.kunciLayar(); },
+    /* daftar kantor tambahan disimpan (disamarkan) di spreadsheet kantor UTAMA, yaitu kantor tempat pengguna pertama kali menambahkan */
+    kantorSimpanServer: function () {
+      var s = this.kantorSet; if (!s.utama) return Promise.resolve(true);
+      var blob = s.list.length ? acak(JSON.stringify({ u: s.utama, un: s.namaUtama, l: s.list }), kunciAcak(s.utama, s.owner)) : '';
+      return this.callKantor(s.utama, { action: 'kantorSimpan', data: blob }, { retry: true, senyap: true, tanpaPil: true }).then(function (r) { return !!r.ok; }).catch(function () { return false; });
+    },
+    kantorSetelahMuat: function () {
+      var self = this; if (!this.user || !this.tenant || this.tenant.id === DEMO_ID) return;
+      var id = this.tenant.id, uname = String(this.user.username).toLowerCase(), s = this.kantorSet;
+      this._kb = this._kb || {}; if (this._kb[id]) return; this._kb[id] = 1;
+      if (s.utama && s.utama !== id) return;                                   // daftar hanya dibaca dari kantor utama (atau saat perangkat belum punya daftar)
+      if (s.utama === id && s.owner && s.owner !== uname) { this.kantorBersihkan(); s = this.kantorSet; }   // perangkat dipakai orang lain: daftar lama dibuang
+      this.engine({ action: 'kantorBaca' }, { retry: true, senyap: true, tanpaPil: true }).then(function (res) {
+        if (!res.ok) return;
+        var j = null;
+        if (res.data) { try { j = JSON.parse(bukaAcak(res.data, kunciAcak(id, uname))); } catch (e) { j = null; } }
+        if (j && Array.isArray(j.l) && j.l.length) {
+          var list = j.l.filter(function (x) { return x && x.id && x.id !== id; }).map(function (x) { return { id: String(x.id), nama: String(x.nama || x.id) }; });
+          if (!list.length) return;
+          self.kantorSet = { utama: id, owner: uname, namaUtama: self.tenant.nama, list: list }; self.kantorSimpanLS();
+        } else if (self.kantorSet.utama === id && self.kantorSet.list.length) { self.kantorSimpanServer(); }
+      }).catch(function () {});
+    },
+    kantorBersihkan: function () {
+      var self = this;
+      this.kantorSet.list.forEach(function (x) { self.ls('del', 'dp_sess_' + x.id); });
+      this.kantorSet = { utama: '', owner: '', namaUtama: '', list: [] }; this.kantorSimpanLS(); this.gab = { data: {}, memuat: false, ts: 0 };
+      this.gabKantor = '';
+    },
+    kantorPeriksa: function () {
+      var self = this, f = this.kantorForm, id = (f.id || '').trim().toUpperCase();
+      f.error = '';
+      if (!/^[A-Z0-9]{4,10}$/.test(id)) { f.error = 'ID_APP tidak valid.'; return; }
+      if (id === DEMO_ID) { f.error = 'ID_APP demo tidak bisa ditambahkan.'; return; }
+      if (id === this.tenant.id) { f.error = 'Ini kantor yang sedang Anda buka.'; return; }
+      if (this.kantorIds.indexOf(id) > -1) { f.error = 'Kantor ini sudah ada di daftar.'; return; }
+      if (this.kantorIds.length >= 8) { f.error = 'Maksimal 8 kantor.'; return; }
+      f.busy = true;
+      this.urlKantor(id).then(function (info) { f.busy = false; f.id = id; f.nama = info.nama; f.langkah = 2; })
+        .catch(function (e) { f.busy = false; f.error = self.pesanGalat(e); });
+    },
+    kantorMasuk: function () {
+      var self = this, f = this.kantorForm, id = f.id;
+      if (f.busy) return;
+      if (!f.username || !f.password) { f.error = 'Isi username dan password kantor ini.'; return; }
+      f.busy = true; f.error = '';
+      this.urlKantor(id).then(function (info) {
+        return http(info.url, { action: 'login', id: id, username: f.username, password: f.password }, 60000);
+      }).then(function (res) {
+        f.busy = false;
+        if (!res.ok) { f.error = res.error || 'Login gagal.'; f.password = ''; return; }
+        if (res.wajibGanti) { f.error = 'Kantor ini meminta Anda mengganti password lebih dulu. Buka kantor itu langsung (menu Ganti ID_APP), ganti password, lalu tambahkan lagi.'; f.password = ''; return; }
+        self.simpanSesiKantor(id, res.token, { username: res.user.username, nama: res.user.nama, role: res.user.role });
+        self.kantorTambah(id, f.nama);
+      }).catch(function (e) { f.busy = false; f.error = self.pesanGalat(e); });
+    },
+    kantorTambah: function (id, nama) {
+      var self = this, s = this.kantorSet;
+      if (!s.utama) s = { utama: this.tenant.id, owner: String(this.user.username).toLowerCase(), namaUtama: this.tenant.nama, list: [] };
+      this.kantorSet = { utama: s.utama, owner: s.owner, namaUtama: s.namaUtama, list: s.list.concat([{ id: id, nama: nama }]) };
+      this.kantorSimpanLS();
+      this.kantorForm = { id: '', nama: '', username: '', password: '', langkah: 1, busy: false, error: '' };
+      this.kantorSimpanServer().then(function (ok) {
+        self.tampilToast(ok ? 'Kantor ditambahkan: ' + nama : 'Kantor ditambahkan di perangkat ini, tetapi belum tersimpan di spreadsheet kantor utama. Perbarui Engine, lalu coba lagi.');
+      });
+      this.gabMuat();
+    },
+    kantorHapus: function (x) {
+      var self = this;
+      this.tanya('Hapus kantor dari daftar?', '"' + x.nama + '" dihapus dari daftar Anda dan sesinya di perangkat ini dihapus. Data kantor itu tidak berubah.', 'Hapus', function () {
+        var s = self.kantorSet, list = s.list.filter(function (z) { return z.id !== x.id; });
+        self.ls('del', 'dp_sess_' + x.id); self.$delete(self.gab.data, x.id);
+        if (self.gabKantor === x.id) self.gabKantor = '';
+        if (!list.length) {
+          self.callKantor(s.utama, { action: 'kantorSimpan', data: '' }, { senyap: true, tanpaPil: true }).catch(function () {});
+          self.kantorSet = { utama: '', owner: '', namaUtama: '', list: [] }; self.kantorSimpanLS();
+        } else { self.kantorSet = { utama: s.utama, owner: s.owner, namaUtama: s.namaUtama, list: list }; self.kantorSimpanLS(); self.kantorSimpanServer(); }
+        if (self.tab === 'gabungan' && !self.adaGab) self.tab = 'kegiatan';
+      });
+    },
+    keluarSemua: function () {
+      var self = this;
+      this.tanya('Keluar dari semua kantor?', 'Sesi semua kantor di perangkat ini dihapus dan daftar kantor di perangkat ini dibersihkan. Daftar di spreadsheet kantor utama tetap ada dan muncul lagi saat Anda login ke kantor utama.', 'Keluar semua', function () {
+        self.kantorIds.forEach(function (id) { self.ls('del', 'dp_sess_' + id); });
+        self.kantorBersihkan(); self.menuOpen = false; self.keluar();
+      });
+    },
+    rekamKantorLain: function (f, tugas) {
+      var self = this, kid = f.kantor;
+      if (f.busy || !f.open) return;
+      f.busy = true; f.error = '';
+      var id = 'K' + (Math.random().toString(36).slice(2, 12) + Date.now().toString(36)).replace(/[^a-z0-9]/g, '').slice(0, 16);
+      this.engineKantor(kid, { action: 'kegiatanSimpan', k: { idBaru: id, nama: f.nama, keterangan: f.keterangan, deadline: f.deadline, tugas: tugas } }, { retry: true }).then(function (res) {
+        f.busy = false;
+        if (!res.ok) { if (res.kode === 'LOGIN') { self.gabTandaiLogin(kid); f.error = 'Sesi kantor ini berakhir. Buka kantor itu dan login lagi.'; } else f.error = res.error || 'Gagal menyimpan.'; return; }
+        f.open = false; self.tampilToast('Kegiatan disimpan di ' + self.namaKantor(kid) + '.'); self.gabMuatId(kid);
+      }).catch(function (e) { f.busy = false; f.error = self.pesanGalat(e); });
+    },
     simpanSesi: function () {
       if (!this.tenant) return;
       if (this.token && this.user) this.ls('set', 'dp_sess_' + this.tenant.id, JSON.stringify({ token: this.token, user: { username: this.user.username, nama: this.user.nama, role: this.user.role } }));
@@ -2115,6 +2542,7 @@ new Vue({
     },
     keluar: function () {
       this.gantiPw.open = false;
+      if (this.tenant && this.kantorSet.utama === this.tenant.id) this.kantorBersihkan();     // keluar dari kantor utama: sesi kantor tambahan di perangkat ikut dihapus
       this.token = ''; this.user = null; this.priv = []; this.privAntre = []; this.simpanSesi(); this.tab = 'kegiatan'; this.users = []; this.error = '';
       if (this.tenant.requireLogin) { this.screen = 'login'; this.docs = []; } else this.muatDokumen();
     },
@@ -2169,6 +2597,7 @@ new Vue({
       if (!this.user) this.token = '';
       this.simpanSesi();
       this.jalankanAntrean();
+      this.kantorSetelahMuat();
     },
     segarkan: function (tampilToast) {
       var self = this;
@@ -2184,6 +2613,8 @@ new Vue({
         var x = this.tenant;
         this.set = { nama: x.nama, requireLogin: !!x.requireLogin, maksMB: x.maksMB || 10, error: '' };
       }
+      if (t === 'gabungan') { this.gabBuka = ''; if (Date.now() - this.gab.ts > 45000) this.gabMuat(); }
+      if (t === 'kantor') this.kantorForm = { id: '', nama: '', username: '', password: '', langkah: 1, busy: false, error: '' };
       if (t === 'log') { this.logJenis = ''; this.logUser = ''; this.logBatas = 200; this.muatLog(); }
       if (t === 'pengguna') { this.userForm = { busy: false, nama: '', username: '', password: '', role: 'anggota', error: '' }; this.muatUsers(); }
     },
@@ -2520,7 +2951,7 @@ new Vue({
       this.privHari = k; this.privModal = true;
       this.bukaPriv = '';
     },
-    kunciLayar: function () { document.body.classList.toggle('kalfull', !!(this.kegFull || this.privFull || this.kegModal || this.privModal)); },
+    kunciLayar: function () { document.body.classList.toggle('kalfull', !!(this.kegFull || this.privFull || this.kegModal || this.privModal || this.gabFull || this.gabModal)); },
     hariAngka: function (k) { return k ? Number(String(k).split('-')[2]) : ''; },
     bulanSingkat: function (k) { var p = String(k || '').split('-'); return p.length < 3 ? '' : new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString('id-ID', { month: 'short' }).toUpperCase(); },
     hariPanjang: function (k) { var p = String(k || '').split('-'); return p.length < 3 ? '' : new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); },
@@ -2531,7 +2962,7 @@ new Vue({
     },
     setKegFull: function () { this.kegFull = !this.kegFull; this.kegModal = false; this.bukaKeg = ''; this.kunciLayar(); },
     setPrivFull: function () { this.privFull = !this.privFull; this.privModal = false; this.bukaPriv = ''; this.kunciLayar(); },
-    tutupKalFull: function () { this.kegFull = this.privFull = this.kegModal = this.privModal = false; this.kunciLayar(); },
+    tutupKalFull: function () { this.kegFull = this.privFull = this.kegModal = this.privModal = this.gabFull = this.gabModal = false; this.kunciLayar(); },
     salin: function (teks, id) {
       var self = this;
       function beres() {
@@ -2888,14 +3319,16 @@ new Vue({
     },
     bukaKegForm: function (k) {
       this.kegForm = k
-        ? { open: true, busy: false, id: k.id, nama: k.nama, keterangan: k.keterangan || '', deadline: k.deadline || '', tugas: '', error: '' }
-        : { open: true, busy: false, id: null, nama: '', keterangan: '', deadline: '', tugas: '', error: '' };
+        ? { open: true, busy: false, id: k.id, nama: k.nama, keterangan: k.keterangan || '', deadline: k.deadline || '', tugas: '', error: '', kantor: this.tenant.id }
+        : { open: true, busy: false, id: null, nama: '', keterangan: '', deadline: '', tugas: '', error: '', kantor: (this.tab === 'gabungan' && this.gabKantor) || this.tenant.id };
     },
     simpanKegForm: function () {
       var f = this.kegForm, self = this;
+      if (f.busy) return;
       if (!f.nama) { f.error = 'Nama kegiatan wajib diisi.'; return; }
       f.error = ''; f.busy = true;
       var tugas = f.tugas.split(/\r?\n/).map(function (x) { return x.trim(); }).filter(Boolean);
+      if (!f.id && f.kantor && f.kantor !== this.tenant.id) { f.busy = false; this.rekamKantorLain(f, tugas); return; }
       if (!f.id) { f.busy = false; this.rekamKeg(f, tugas); return; }
       f.busy = false;
       var asli = this.kegiatan.filter(function (x) { return x.id === f.id; })[0];
@@ -2953,8 +3386,9 @@ new Vue({
       if (this.rekapOpen) { this.rekapOpen = false; return; }
       if (this.editT.id) { this.editT.id = ''; return; }
       if (this.kegModal) { this.kegModal = false; return; }
+      if (this.gabModal) { this.gabModal = false; return; }
       if (this.privModal) { this.privModal = false; return; }
-      if (this.kegFull || this.privFull) { this.tutupKalFull(); return; }
+      if (this.kegFull || this.privFull || this.gabFull) { this.tutupKalFull(); return; }
       if (this.up.open && !this.up.busy) this.up.open = false;
     },
     halaman: function (n) {
